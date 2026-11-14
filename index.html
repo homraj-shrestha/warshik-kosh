@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="ne">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#e67e22">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="कोष संकलन">
+<title>वार्षिक कोष संकलन</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:Arial,"Noto Sans Devanagari",sans-serif;background:#fff8e7;color:#3b2f1e;font-size:16px;padding-bottom:84px}
+header{background:linear-gradient(135deg,#e67e22,#f1c40f);color:#fff;padding:14px 16px 12px;position:sticky;top:0;z-index:20;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+header .row{display:flex;align-items:center;gap:10px}
+header h1{margin:0;font-size:19px;flex:1;text-shadow:0 1px 2px rgba(0,0,0,.2)}
+#pill{font-size:12px;background:rgba(255,255,255,.9);color:#7a4a00;border-radius:20px;padding:4px 10px;max-width:58%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+main{padding:12px;max-width:760px;margin:auto}
+.page{display:none}.page.active{display:block}
+.card{background:#fff;border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 2px 8px rgba(230,126,34,.12);border:1px solid #fbe3b5}
+.card h2{margin:0 0 10px;font-size:18px;color:#b35e00}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi{background:linear-gradient(135deg,#fff3d6,#ffe7a8);border-radius:14px;padding:12px}
+.kpi small{color:#7a4a00;font-weight:700}
+.kpi b{display:block;font-size:20px;margin-top:4px;color:#3b2f1e}
+input,select,textarea{width:100%;padding:13px;font-size:17px;border:2px solid #f3c77a;border-radius:12px;background:#fff;margin:4px 0 10px;font-family:inherit}
+input:focus,select:focus{outline:none;border-color:#e67e22}
+label{font-weight:700;color:#7a4a00;font-size:14px}
+.btn{display:block;width:100%;padding:15px;font-size:17px;font-weight:700;border:0;border-radius:14px;background:linear-gradient(135deg,#e67e22,#f39c12);color:#fff;box-shadow:0 3px 8px rgba(230,126,34,.35);margin:6px 0;font-family:inherit}
+.btn.light{background:#fff;color:#b35e00;border:2px solid #f3c77a;box-shadow:none}
+.btn.red{background:linear-gradient(135deg,#c0392b,#e74c3c);box-shadow:none}
+.btn.small{display:inline-block;width:auto;padding:9px 14px;font-size:14px;margin:4px 4px 4px 0;border-radius:10px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:6px}
+.chip{flex:none;padding:10px 16px;border-radius:24px;border:2px solid #f3c77a;background:#fff;font-weight:700;color:#7a4a00}
+.chip.on{background:#e67e22;color:#fff;border-color:#e67e22}
+.fam{background:#fff;border:1px solid #fbe3b5;border-radius:16px;padding:12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.fam .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.fam .name{font-size:18px;font-weight:700;color:#3b2f1e}
+.code{display:inline-block;background:#fff3d6;color:#b35e00;border-radius:8px;padding:2px 8px;font-size:13px;font-weight:700}
+.muted{color:#8a7350;font-size:14px;margin-top:4px}
+.badge{padding:6px 10px;border-radius:20px;font-size:13px;font-weight:700;white-space:nowrap}
+.paid{background:#e3f7e8;color:#1e7b3a}.due{background:#fde2e0;color:#b02a1b}.warn{background:#fff0c2;color:#8a5a00}
+.pay-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.pay-row input{margin:0;padding:11px;font-size:17px}
+.pay-row label{font-size:13px}
+.bar{height:12px;background:#fbe3b5;border-radius:8px;overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,#f39c12,#27ae60)}
+.year-card{background:#fff;border-radius:16px;padding:12px;margin-bottom:10px;border:1px solid #fbe3b5}
+.year-card .yh{display:flex;justify-content:space-between;font-weight:700;font-size:18px;color:#b35e00}
+.note{font-size:13px;color:#8a7350;margin-top:6px}
+.status{font-size:14px;margin-top:8px;color:#7a4a00;font-weight:700;min-height:20px}
+nav.bottom{position:fixed;left:0;right:0;bottom:0;background:#fff;display:flex;justify-content:space-around;padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px));border-top:2px solid #f3c77a;z-index:30;box-shadow:0 -3px 10px rgba(0,0,0,.06)}
+nav.bottom button{flex:1;border:0;background:none;padding:6px 2px;font-size:12px;color:#8a7350;font-family:inherit;border-radius:12px}
+nav.bottom button .ic{display:block;font-size:22px;line-height:1.2}
+nav.bottom button.on{color:#e67e22;font-weight:700;background:#fff3d6}
+#lock{position:fixed;inset:0;background:linear-gradient(135deg,#e67e22,#f1c40f);display:none;align-items:center;justify-content:center;padding:18px;z-index:100}
+#lockBox{background:#fff;border-radius:20px;padding:22px;width:100%;max-width:370px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+#lockBox h2{margin:0 0 6px;color:#b35e00}
+#lmsg{color:#b02a1b;font-size:14px;min-height:20px;margin:4px 0}
+.hidden{display:none!important}
+@media (min-width:700px){.fam .top{flex-direction:row}}
+@media print{header,nav.bottom,.noprint{display:none!important}.page{display:block!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="row">
+    <h1>🧡 वार्षिक कोष संकलन</h1>
+    <span id="pill">📴 Offline</span>
+  </div>
+</header>
+
+<main>
+  <!-- सारांश -->
+  <section id="p-home" class="page active">
+    <div class="card">
+      <h2>सारांश</h2>
+      <div class="kpis">
+        <div class="kpi"><small>जम्मा परिवार</small><b id="kFam">0</b></div>
+        <div class="kpi"><small>कुल संकलन</small><b id="kTot">रु. 0</b></div>
+        <div class="kpi"><small>कुल बाँकी</small><b id="kDue">रु. 0</b></div>
+        <div class="kpi"><small>वर्ष</small><b id="kYr">0</b></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>वर्षगत विवरण</h2>
+      <div id="yearList"></div>
+      <button class="btn" onclick="addYear()">＋ नयाँ वर्ष थप्नुहोस्</button>
+    </div>
+  </section>
+
+  <!-- परिवार -->
+  <section id="p-fam" class="page">
+    <div class="card">
+      <h2>नयाँ परिवार थप्नुहोस्</h2>
+      <label>कोड <span style="color:#b02a1b">*</span></label>
+      <input id="fCode" placeholder="जस्तै: 101">
+      <label>नाम <span style="color:#b02a1b">*</span></label>
+      <input id="fName" placeholder="परिवारको मुखिया">
+      <label>मोबाइल नम्बर</label>
+      <input id="fPhone" inputmode="tel">
+      <label>ठेगाना</label>
+      <input id="fAddr">
+      <button class="btn" onclick="addFam()">💾 सेभ गर्नुहोस्</button>
+    </div>
+    <div class="card">
+      <h2>परिवार सूची</h2>
+      <input id="fSearch" placeholder="🔍 नाम, कोड, मोबाइल वा ठेगाना खोज्नुहोस्" oninput="renderFam()">
+      <div id="famList"></div>
+    </div>
+    <div id="editBox" class="card hidden">
+      <h2>परिवार सच्याउनुहोस्</h2>
+      <label>कोड</label><input id="eCode">
+      <label>नाम</label><input id="eName">
+      <label>मोबाइल नम्बर</label><input id="ePhone" inputmode="tel">
+      <label>ठेगाना</label><input id="eAddr">
+      <button class="btn" onclick="saveEdit()">✅ सेभ गर्नुहोस्</button>
+      <button class="btn light" onclick="cancelEdit()">रद्द गर्नुहोस्</button>
+    </div>
+  </section>
+
+  <!-- संकलन -->
+  <section id="p-col" class="page">
+    <div class="card">
+      <h2>वार्षिक संकलन</h2>
+      <div class="chips" id="yearChips"></div>
+      <div class="note" id="colSum"></div>
+      <input id="cSearch" placeholder="🔍 नाम वा कोड खोज्नुहोस्" oninput="renderCol()">
+    </div>
+    <div id="colList"></div>
+  </section>
+
+  <!-- बाँकी -->
+  <section id="p-due" class="page">
+    <div class="card">
+      <h2>बाँकी सूची (सबै वर्ष)</h2>
+      <div class="note" id="dueSum"></div>
+    </div>
+    <div id="dueList"></div>
+  </section>
+
+  <!-- सेटिङ -->
+  <section id="p-set" class="page">
+    <div class="card">
+      <h2>☁️ Cloud Sync</h2>
+      <label>Web App URL</label>
+      <input id="cUrl" placeholder="https://script.google.com/.../exec">
+      <label>Sync Key</label>
+      <input id="cKey" placeholder="गोप्य शब्द">
+      <button class="btn" onclick="saveCloud()">💾 सेभ र Sync</button>
+      <button class="btn light" onclick="cloudSync(false)">🔄 अहिले Sync गर्नुहोस्</button>
+      <button class="btn light" onclick="forcePush()">⬆️ यो उपकरणलाई सही मान्नुहोस्</button>
+      <div class="status" id="syncStatus"></div>
+    </div>
+    <div class="card">
+      <h2>दर (प्रति वर्ष)</h2>
+      <div id="rateList"></div>
+    </div>
+    <div class="card">
+      <h2>Backup र Export</h2>
+      <button class="btn light" onclick="backupJSON()">💾 Backup डाउनलोड</button>
+      <label class="btn light" style="text-align:center;cursor:pointer">📂 Restore (Backup छान्नुहोस्)<input type="file" accept=".json,application/json" onchange="restoreJSON(this)" style="display:none"></label>
+      <button class="btn light" onclick="exportCSV()">📥 Excel (CSV) डाउनलोड</button>
+    </div>
+    <div class="card">
+      <h2>खाता</h2>
+      <button class="btn light" onclick="changeCreds()">🔑 User ID / Password बदल्नुहोस्</button>
+      <button class="btn" onclick="logout()">🔒 लक गर्नुहोस्</button>
+      <button class="btn red" onclick="resetAll()">⚠️ सबै डेटा मेटाउनुहोस्</button>
+    </div>
+  </section>
+</main>
+
+<nav class="bottom">
+  <button class="on" data-p="home" onclick="show('home')"><span class="ic">🏠</span>सारांश</button>
+  <button data-p="fam" onclick="show('fam')"><span class="ic">👨‍👩‍👧</span>परिवार</button>
+  <button data-p="col" onclick="show('col')"><span class="ic">💰</span>संकलन</button>
+  <button data-p="due" onclick="show('due')"><span class="ic">⚠️</span>बाँकी</button>
+  <button data-p="set" onclick="show('set')"><span class="ic">⚙️</span>सेटिङ</button>
+</nav>
+
+<div id="lock">
+  <div id="lockBox">
+    <h2 id="lTitle">लगइन</h2>
+    <p class="note" id="lSub"></p>
+    <input id="lUser" placeholder="User ID" autocomplete="username">
+    <input id="lPass" type="password" placeholder="Password" autocomplete="current-password">
+    <input id="lPass2" type="password" placeholder="Password फेरि लेख्नुहोस्" autocomplete="new-password">
+    <div id="lmsg"></div>
+    <button class="btn" id="lBtn" onclick="lockSubmit()">लगइन</button>
+    <button class="btn light" id="lForgot" onclick="showLock('recover')">🔑 Password बिर्सनुभयो?</button>
+    <button class="btn light hidden" id="lCancel" onclick="cancelLock()">रद्द गर्नुहोस्</button>
+  </div>
+</div>
+
+<script>
+/* ================= मूल डेटा ================= */
+const KEY = "WARSHIK_KOSH_V1";
+const CFG_KEY = "WARSHIK_CLOUD_V1";
+const AUTH_KEY = "WARSHIK_AUTH_V1";
+const DEF_RATE = 1000;
+let db = { families: [], years: [], rates: {}, tomb: {}, yearTomb: {} };
+let curYear = "";
+let editId = null;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[m]);
+const num = v => Number(String(v == null ? "" : v).replace(/,/g, "")) || 0;
+const fmt = n => "रु. " + Number(n || 0).toLocaleString("en-IN");
+const nowTs = () => Date.now();
+
+function load(){
+  try { db = JSON.parse(localStorage.getItem(KEY)) || db; } catch(e) {}
+  db.families = Array.isArray(db.families) ? db.families : [];
+  db.years = Array.isArray(db.years) ? db.years : [];
+  db.rates = db.rates || {}; db.tomb = db.tomb || {}; db.yearTomb = db.yearTomb || {};
+  db.families.forEach(f => { f.pay = f.pay || {}; if (f.ts === undefined) f.ts = 0;
+    Object.keys(f.pay).forEach(y => { if (f.pay[y].ts === undefined) f.pay[y].ts = 0; }); });
+  curYear = db.years[db.years.length - 1] || "";
+}
+function save(){
+  try { localStorage.setItem(KEY, JSON.stringify(db)); } catch(e) { alert("डेटा सेभ हुन सकेन: " + e); }
+  scheduleSync();
+}
+const hasRec = (f, y) => { const p = f.pay[y]; return !!p && (num(p.amt) > 0 || String(p.rcpt || "").trim() !== ""); };
+const amtOf = (f, y) => (f.pay[y] ? num(f.pay[y].amt) : 0);
+const sumYear = y => db.families.reduce((a, f) => a + amtOf(f, y), 0);
+const paidCount = y => db.families.filter(f => amtOf(f, y) > 0).length;
+const unpaidYears = f => db.years.filter(y => amtOf(f, y) <= 0);
+const dueOf = f => unpaidYears(f).reduce((a, y) => a + (Number(db.rates[y]) || 0), 0);
+
+/* ================= पृष्ठ ================= */
+function show(p){
+  ["home","fam","col","due","set"].forEach(id => $("p-" + id).classList.toggle("active", id === p));
+  document.querySelectorAll("nav.bottom button").forEach(b => b.classList.toggle("on", b.dataset.p === p));
+  window.scrollTo(0, 0);
+  renderAll();
+}
+function renderAll(){ renderHome(); renderFam(); renderCol(); renderDue(); renderSet(); }
+
+function renderHome(){
+  let tot = 0, due = 0;
+  db.years.forEach(y => { tot += sumYear(y); });
+  db.families.forEach(f => { due += dueOf(f); });
+  $("kFam").textContent = db.families.length;
+  $("kTot").textContent = fmt(tot);
+  $("kDue").textContent = fmt(due);
+  $("kYr").textContent = db.years.length;
+  $("yearList").innerHTML = db.years.length ? db.years.map(y => {
+    const rate = Number(db.rates[y]) || 0, n = db.families.length;
+    const exp = rate * n, got = sumYear(y), pct = exp ? Math.min(100, Math.round(got / exp * 100)) : 0;
+    return `<div class="year-card"><div class="yh"><span>${esc(y)} साल</span><span>${pct}%</span></div>
+      <div class="note">दर: ${fmt(rate)} · संकलन: ${fmt(got)} · तिरेका ${paidCount(y)} / ${n}</div>
+      <div class="bar"><i style="width:${pct}%"></i></div></div>`;
+  }).join("") : '<div class="note">अहिले कुनै वर्ष छैन। तल "नयाँ वर्ष थप्नुहोस्" थिच्नुहोस्।</div>';
+}
+
+/* ================= परिवार ================= */
+function codeTaken(code, exceptId){
+  return db.families.find(f => f.id !== exceptId && String(f.code).trim().toLowerCase() === code.toLowerCase());
+}
+function addFam(){
+  const code = $("fCode").value.trim(), name = $("fName").value.trim();
+  if (!code) return alert("कोड अनिवार्य छ।");
+  if (!name) return alert("नाम अनिवार्य छ।");
+  const d = codeTaken(code, null);
+  if (d) return alert(`कोड "${code}" पहिल्यै "${d.name}" लाई दिइएको छ।`);
+  db.families.push({ id: "f" + Date.now(), code, name, phone: $("fPhone").value.trim(), address: $("fAddr").value.trim(), pay: {}, ts: nowTs() });
+  ["fCode","fName","fPhone","fAddr"].forEach(i => $(i).value = "");
+  save(); renderAll();
+}
+function renderFam(){
+  const q = ($("fSearch") ? $("fSearch").value : "").trim().toLowerCase();
+  const list = db.families.filter(f => !q || [f.name, f.code, f.phone, f.address].join(" ").toLowerCase().includes(q));
+  $("famList").innerHTML = list.map(f => `
+    <div class="fam">
+      <div class="top">
+        <div><span class="code">${esc(f.code)}</span>
+          <div class="name">${esc(f.name)}</div>
+          <div class="muted">📞 ${esc(f.phone || "—")}</div>
+          <div class="muted">📍 ${esc(f.address || "—")}</div></div>
+        <div>
+          <button class="btn small light" onclick="editFam('${f.id}')">✏️</button>
+          <button class="btn small red" onclick="delFam('${f.id}')">🗑</button>
+        </div>
+      </div>
+    </div>`).join("") || '<div class="note">कुनै परिवार भेटिएन</div>';
+}
+function editFam(id){
+  const f = db.families.find(x => x.id === id); if (!f) return;
+  editId = id;
+  $("eCode").value = f.code; $("eName").value = f.name; $("ePhone").value = f.phone || ""; $("eAddr").value = f.address || "";
+  $("editBox").classList.remove("hidden");
+  $("editBox").scrollIntoView({ behavior: "smooth" });
+}
+function cancelEdit(){ editId = null; $("editBox").classList.add("hidden"); }
+function saveEdit(){
+  const f = db.families.find(x => x.id === editId); if (!f) return cancelEdit();
+  const code = $("eCode").value.trim(), name = $("eName").value.trim();
+  if (!code || !name) return alert("कोड र नाम दुवै अनिवार्य छन्।");
+  const d = codeTaken(code, f.id);
+  if (d) return alert(`कोड "${code}" पहिल्यै "${d.name}" लाई दिइएको छ।`);
+  f.code = code; f.name = name; f.phone = $("ePhone").value.trim(); f.address = $("eAddr").value.trim(); f.ts = nowTs();
+  cancelEdit(); save(); renderAll();
+}
+function delFam(id){
+  const f = db.families.find(x => x.id === id); if (!f) return;
+  const ys = db.years.filter(y => hasRec(f, y));
+  if (ys.length) return alert(`"${f.name}" को ${ys.join(", ")} सालमा रकम/रसिद छ। हिसाब सुरक्षित राख्न मेटाउन मिल्दैन।`);
+  if (!confirm(`"${f.name}" मेटाउने हो?`)) return;
+  db.tomb[id] = nowTs();
+  db.families = db.families.filter(x => x.id !== id);
+  save(); renderAll();
+}
+
+/* ================= वर्ष र दर ================= */
+function addYear(){
+  const y = prompt("नयाँ वर्ष लेख्नुहोस् (जस्तै 2086):", String(Number(db.years[db.years.length-1] || 2080) + 1));
+  if (y === null) return;
+  const yy = y.trim();
+  if (!/^\d{4}$/.test(yy)) return alert("वर्ष ४ अंकमा लेख्नुहोस्।");
+  if (db.years.indexOf(yy) >= 0) return alert("यो वर्ष पहिल्यै छ।");
+  const last = db.years[db.years.length - 1];
+  db.years.push(yy); db.years.sort((a,b) => Number(a) - Number(b));
+  delete db.yearTomb[yy];
+  db.rates[yy] = last ? (Number(db.rates[last]) || DEF_RATE) : DEF_RATE;
+  curYear = yy; save(); renderAll();
+}
+function delYear(y){
+  const used = db.families.filter(f => hasRec(f, y)).length;
+  if (used) return alert(`${y} सालमा ${used} परिवारको रकम वा रसिद छ। हिसाब सुरक्षित राख्न मेटाउन मिल्दैन।`);
+  if (!confirm(`${y} साल मेटाउने हो?`)) return;
+  db.years = db.years.filter(x => x !== y);
+  db.yearTomb[y] = nowTs();
+  delete db.rates[y];
+  db.families.forEach(f => { delete f.pay[y]; });
+  if (curYear === y) curYear = db.years[db.years.length - 1] || "";
+  save(); renderAll();
+}
+function setRate(y, v){ db.rates[y] = num(v); save(); renderAll(); }
+
+/* ================= संकलन ================= */
+function renderCol(){
+  $("yearChips").innerHTML = db.years.map(y => `<button class="chip ${y===curYear?"on":""}" onclick="pickYear('${y}')">${esc(y)}</button>`).join("")
+    || '<div class="note">पहिले सारांश मा वर्ष थप्नुहोस्।</div>';
+  const rate = Number(db.rates[curYear]) || 0;
+  $("colSum").textContent = curYear ? `${curYear} साल · दर: ${fmt(rate)} · संकलन: ${fmt(sumYear(curYear))} · तिरेका ${paidCount(curYear)} / ${db.families.length}` : "";
+  const q = ($("cSearch") ? $("cSearch").value : "").trim().toLowerCase();
+  const list = db.families.filter(f => !q || (f.name + " " + f.code).toLowerCase().includes(q));
+  $("colList").innerHTML = !curYear ? "" : list.map(f => {
+    const p = f.pay[curYear] || { amt: "", rcpt: "" };
+    const a = amtOf(f, curYear);
+    const badge = a > 0 ? (String(p.rcpt||"").trim() ? '<span class="badge paid">✅ तिरेको</span>' : '<span class="badge warn">⚠️ रसिद बाँकी</span>') : '<span class="badge due">❌ नतिरेको</span>';
+    return `<div class="fam">
+      <div class="top"><div><span class="code">${esc(f.code)}</span><div class="name">${esc(f.name)}</div></div>${badge}</div>
+      <div class="pay-row">
+        <div><label>रकम (रु.)</label><input inputmode="decimal" value="${p.amt !== "" && p.amt !== undefined && num(p.amt) ? num(p.amt) : ""}" onchange="setAmt('${f.id}', this.value)"></div>
+        <div><label>रसिद नं. (हातले)</label><input value="${esc(p.rcpt || "")}" onchange="setRcpt('${f.id}', this.value)"></div>
+      </div></div>`;
+  }).join("") || '<div class="note">कुनै परिवार भेटिएन</div>';
+}
+function pickYear(y){ curYear = y; renderCol(); }
+function setAmt(id, v){
+  const f = db.families.find(x => x.id === id); if (!f || !curYear) return;
+  const n = num(v);
+  if (n <= 0 && hasRec(f, curYear) && !confirm(`${f.name} को ${curYear} सालको रकम हटाउने हो?`)) return renderCol();
+  const old = f.pay[curYear] || { rcpt: "" };
+  f.pay[curYear] = { amt: n > 0 ? n : 0, rcpt: n > 0 ? (old.rcpt || "") : "", ts: nowTs() };
+  save(); renderAll();
+}
+function setRcpt(id, v){
+  const f = db.families.find(x => x.id === id); if (!f || !curYear) return;
+  const old = f.pay[curYear] || { amt: 0 };
+  f.pay[curYear] = { amt: old.amt || 0, rcpt: String(v).trim(), ts: nowTs() };
+  save(); renderAll();
+}
+
+/* ================= बाँकी ================= */
+function renderDue(){
+  const rows = db.families.map(f => ({ f, ys: unpaidYears(f), due: dueOf(f) })).filter(x => x.ys.length);
+  const total = rows.reduce((a, x) => a + x.due, 0);
+  $("dueSum").textContent = `बाँकी परिवार: ${rows.length} · कुल बाँकी: ${fmt(total)}`;
+  $("dueList").innerHTML = rows.map(x => `<div class="fam">
+      <div class="top"><div><span class="code">${esc(x.f.code)}</span><div class="name">${esc(x.f.name)}</div>
+      <div class="muted">📞 ${esc(x.f.phone || "—")}</div>
+      <div class="muted">बाँकी वर्ष: ${esc(x.ys.join(", "))}</div></div>
+      <span class="badge due">${fmt(x.due)}</span></div></div>`).join("")
+    || '<div class="card"><div class="note">सबै परिवारले तिरेका छन् ✅</div></div>';
+}
+
+/* ================= सेटिङ ================= */
+function renderSet(){
+  const c = getCfg();
+  if (!$("cUrl").value && c.url) $("cUrl").value = c.url;
+  if (!$("cKey").value && c.key) $("cKey").value = c.key;
+  $("rateList").innerHTML = db.years.map(y => `<div style="display:flex;gap:10px;align-items:center;margin-bottom:6px">
+      <b style="min-width:70px">${esc(y)}</b>
+      <input inputmode="decimal" value="${Number(db.rates[y]) || 0}" style="margin:0" onchange="setRate('${y}', this.value)">
+      <button class="btn small red" style="margin:0" onclick="delYear('${y}')">🗑</button></div>`).join("")
+    || '<div class="note">कुनै वर्ष छैन</div>';
+}
+
+/* ================= लगइन / Password ================= */
+const te = new TextEncoder();
+const toHex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,"0")).join("");
+const fromHex = h => Uint8Array.from(h.match(/../g).map(x => parseInt(x,16)));
+async function derive(pw, saltHex){
+  const k = await crypto.subtle.importKey("raw", te.encode(pw), "PBKDF2", false, ["deriveBits"]);
+  return toHex(await crypto.subtle.deriveBits({ name:"PBKDF2", salt: fromHex(saltHex), iterations:100000, hash:"SHA-256" }, k, 256));
+}
+function getAuth(){ try { return JSON.parse(localStorage.getItem(AUTH_KEY)); } catch(e) { return null; } }
+let lockMode = "login", sessionOK = false;
+function showLock(mode){
+  lockMode = mode || (getAuth() ? "login" : "setup");
+  const T = { setup:"पहिलो सेटअप", login:"लगइन", change:"नयाँ User ID / Password", recover:"रिकभरी कोड" };
+  const S = {
+    setup:"User ID र Password बनाउनुहोस्। यसलाई सुरक्षित राख्नुहोस्।",
+    login:"User ID र Password लेख्नुहोस्।",
+    change:"नयाँ User ID र Password लेख्नुहोस्।",
+    recover:"सेटअपमा दिएको रिकभरी कोड लेख्नुहोस्।"
+  };
+  $("lTitle").textContent = T[lockMode]; $("lSub").textContent = S[lockMode];
+  const rec = lockMode === "recover";
+  $("lUser").classList.toggle("hidden", rec);
+  $("lPass2").classList.toggle("hidden", !(lockMode === "setup" || lockMode === "change"));
+  $("lPass").placeholder = rec ? "रिकभरी कोड" : "Password";
+  $("lBtn").textContent = lockMode === "login" ? "लगइन" : (rec ? "जाँच गर्नुहोस्" : "सेभ गर्नुहोस्");
+  $("lForgot").classList.toggle("hidden", lockMode !== "login");
+  $("lCancel").classList.toggle("hidden", !(lockMode === "change" || rec));
+  $("lmsg").textContent = ""; $("lPass").value = ""; $("lPass2").value = "";
+  $("lock").style.display = "flex";
+}
+function setMsg(t){ $("lmsg").textContent = t; }
+async function lockSubmit(){
+  const user = $("lUser").value.trim(), pw = $("lPass").value;
+  if (lockMode === "recover") return recoverSubmit();
+  if (!user || !pw) return setMsg("User ID र Password दुवै लेख्नुहोस्।");
+  if (lockMode === "login"){
+    const a = getAuth();
+    if (user === a.user && await derive(pw, a.salt) === a.hash) { sessionOK = true; $("lock").style.display = "none"; return; }
+    return setMsg("User ID वा Password मिलेन।");
+  }
+  if (pw.length < 6) return setMsg("Password कम्तीमा ६ अक्षरको हुनुपर्छ।");
+  if (pw !== $("lPass2").value) return setMsg("दुई Password मिलेन।");
+  const salt = toHex(crypto.getRandomValues(new Uint8Array(16)));
+  const hash = await derive(pw, salt);
+  const rc = makeCode(), rsalt = toHex(crypto.getRandomValues(new Uint8Array(16)));
+  const rhash = await derive(rc.replace(/-/g,""), rsalt);
+  localStorage.setItem(AUTH_KEY, JSON.stringify({ user, salt, hash, rec:{ salt:rsalt, hash:rhash } }));
+  alert("सेभ भयो।\n\nरिकभरी कोड: " + rc + "\n\nयो कोड कागजमा लेख्नुहोस्। फेरि देखाइँदैन।");
+  if (lockMode === "change" && sessionOK) { $("lock").style.display = "none"; renderAll(); }
+  else { sessionOK = false; showLock("login"); }
+}
+async function recoverSubmit(){
+  const a = getAuth();
+  const code = $("lPass").value.trim().toUpperCase().replace(/\s/g,"");
+  if (!a || !a.rec) return setMsg("यो सफ्टवेयरमा रिकभरी कोड सेट गरिएको छैन।");
+  if (await derive(code.replace(/-/g,""), a.rec.salt) !== a.rec.hash) return setMsg("रिकभरी कोड मिलेन।");
+  showLock("change"); setMsg("कोड मिल्यो। नयाँ User ID र Password लेख्नुहोस्।");
+}
+function makeCode(){
+  const ch = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let s = ""; for (const x of crypto.getRandomValues(new Uint8Array(16))) s += ch[x % ch.length];
+  return s.match(/.{1,4}/g).join("-");
+}
+function cancelLock(){ if (sessionOK) $("lock").style.display = "none"; else showLock("login"); }
+function logout(){ sessionOK = false; showLock("login"); }
+function changeCreds(){
+  const a = getAuth(); if (!a) return showLock("setup");
+  const cur = prompt("हालको Password लेख्नुहोस्:");
+  if (cur === null) return;
+  derive(cur, a.salt).then(h => { if (h !== a.hash) return alert("हालको Password मिलेन।"); showLock("change"); });
+}
+
+/* ================= Cloud Sync ================= */
+const getCfg = () => { try { return JSON.parse(localStorage.getItem(CFG_KEY)) || {}; } catch(e) { return {}; } };
+function saveCloud(){
+  const url = $("cUrl").value.trim(), key = $("cKey").value.trim();
+  if (!url || !key) return alert("URL र Sync Key दुवै लेख्नुहोस्।");
+  localStorage.setItem(CFG_KEY, JSON.stringify({ url, key }));
+  cloudSync(false);
+}
+async function cloudReq(action, payload){
+  const c = getCfg();
+  if (!c.url || !c.key) throw new Error("पहिले URL र Sync Key राख्नुहोस्।");
+  const res = await fetch(c.url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body: JSON.stringify({ action, key:c.key, payload: payload || {} }) });
+  let d; try { d = JSON.parse(await res.text()); } catch(e) { throw new Error("Cloud जवाफ बुझिएन।"); }
+  if (!d.ok) throw new Error(d.error || "Cloud त्रुटि");
+  return d;
+}
+function mergeCloud(inc){
+  db.tomb = db.tomb || {}; db.yearTomb = db.yearTomb || {};
+  Object.keys(inc.tomb || {}).forEach(id => { db.tomb[id] = Math.max(db.tomb[id] || 0, inc.tomb[id] || 0); });
+  Object.keys(inc.yearTomb || {}).forEach(y => { db.yearTomb[y] = Math.max(db.yearTomb[y] || 0, inc.yearTomb[y] || 0); });
+  const byId = {}; db.families.forEach(f => byId[f.id] = f);
+  (inc.families || []).forEach(f2 => {
+    let f1 = byId[f2.id];
+    if (!f1) { f1 = JSON.parse(JSON.stringify(f2)); db.families.push(f1); byId[f1.id] = f1; }
+    else if ((f2.ts || 0) > (f1.ts || 0)) { ["code","name","phone","address"].forEach(k => f1[k] = f2[k]); f1.ts = f2.ts; }
+    f1.pay = f1.pay || {};
+    Object.keys(f2.pay || {}).forEach(y => { const p2 = f2.pay[y], p1 = f1.pay[y]; if (!p1 || (p2.ts || 0) > (p1.ts || 0)) f1.pay[y] = JSON.parse(JSON.stringify(p2)); });
+  });
+  db.families = db.families.filter(f => !(db.tomb[f.id] && db.tomb[f.id] >= (f.ts || 0)));
+  (inc.years || []).forEach(y => { if (!db.yearTomb[y] && db.years.indexOf(y) < 0) db.years.push(y); });
+  db.years = db.years.filter(y => !db.yearTomb[y]).sort((a,b) => Number(a) - Number(b));
+  Object.keys(inc.rates || {}).forEach(y => { if (db.rates[y] === undefined && !db.yearTomb[y]) db.rates[y] = inc.rates[y]; });
+  if (db.years.indexOf(curYear) < 0) curYear = db.years[db.years.length - 1] || "";
+}
+let syncTimer = null, syncing = false;
+function scheduleSync(){
+  const c = getCfg(); if (!c.url || !c.key) return;
+  clearTimeout(syncTimer); syncTimer = setTimeout(() => cloudSync(true), 2500);
+}
+function setStatus(t){ $("syncStatus").textContent = t; $("pill").textContent = t.split(":")[0].slice(0, 28); }
+async function cloudSync(auto){
+  const c = getCfg();
+  if (!c.url || !c.key) { if (!auto) alert("पहिले URL र Sync Key राख्नुहोस्।"); return; }
+  if (syncing) return;
+  if (!navigator.onLine) return setStatus("📴 Offline — इन्टरनेट आएपछि मिल्छ");
+  syncing = true; setStatus("🔄 Sync हुँदैछ...");
+  try {
+    const r = await cloudReq("sync", {});
+    if (r.db && Array.isArray(r.db.families)) { mergeCloud(r.db); localStorage.setItem(KEY, JSON.stringify(db)); renderAll(); }
+    await cloudReq("push", db);
+    setStatus("✅ Sync भयो: " + new Date().toLocaleTimeString("ne-NP"));
+  } catch(e) {
+    setStatus("⚠️ Sync भएन: " + e.message);
+    if (!auto) alert("Sync असफल: " + e.message);
+  } finally { syncing = false; }
+}
+async function forcePush(){
+  if (!confirm("Cloud को डेटा यो उपकरणको डेटाले पूरै बदलिनेछ। पक्का?")) return;
+  try { await cloudReq("push", db); setStatus("✅ Cloud मा सही डेटा राखियो: " + new Date().toLocaleTimeString("ne-NP")); }
+  catch(e) { setStatus("⚠️ पठाउन सकिएन: " + e.message); }
+}
+function netPill(){ $("pill").textContent = navigator.onLine ? "🟢 Online" : "📴 Offline"; }
+window.addEventListener("online", () => { netPill(); cloudSync(true); });
+window.addEventListener("offline", () => { netPill(); setStatus("📴 Offline — इन्टरनेट आएपछि मिल्छ"); });
+
+/* ================= Backup / Export ================= */
+function download(name, text, type){
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click();
+}
+function backupJSON(){ download("वार्षिक_कोष_backup_" + new Date().toISOString().slice(0,10) + ".json", JSON.stringify(db, null, 2), "application/json"); }
+function restoreJSON(input){
+  const file = input.files && input.files[0]; if (!file) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const d = JSON.parse(rd.result);
+      if (!Array.isArray(d.families) || !Array.isArray(d.years)) throw new Error("ढाँचा मिलेन");
+      if (!confirm("हालको डेटा बदलेर Backup लोड गर्ने हो?")) return;
+      db = d; load(); save(); renderAll(); alert("Restore भयो।");
+    } catch(e) { alert("Backup फाइल मिलेन: " + e.message); }
+  };
+  rd.readAsText(file);
+}
+function exportCSV(){
+  const q = s => '"' + String(s == null ? "" : s).replace(/"/g,'""') + '"';
+  const head = ["कोड","नाम","मोबाइल","ठेगाना"];
+  db.years.forEach(y => head.push(y + " रकम", y + " रसिद"));
+  const lines = [head.map(q).join(",")];
+  db.families.forEach(f => {
+    const row = [f.code, f.name, f.phone || "", f.address || ""];
+    db.years.forEach(y => row.push(amtOf(f, y), f.pay[y] ? f.pay[y].rcpt : ""));
+    lines.push(row.map(q).join(","));
+  });
+  download("वार्षिक_कोष.csv", "\uFEFF" + lines.join("\r\n"), "text/csv;charset=utf-8");
+}
+function resetAll(){
+  if (!confirm("सबै डेटा मेटिनेछ। पक्का हो?")) return;
+  if (!confirm("दोस्रो पटक पुष्टि: साँच्चै मेटाउने?")) return;
+  db = { families: [], years: [], rates: {}, tomb: {}, yearTomb: {} };
+  curYear = ""; save(); renderAll();
+}
+
+/* ================= सुरुवात ================= */
+load();
+renderAll();
+netPill();
+(function(){
+  const c = getCfg();
+  if (c.url) $("cUrl").value = c.url;
+  if (c.key) $("cKey").value = c.key;
+  if (!navigator.onLine && c.url) setStatus("📴 Offline — इन्टरनेट आएपछि मिल्छ");
+})();
+showLock();
+if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+</script>
+</body>
+</html>
