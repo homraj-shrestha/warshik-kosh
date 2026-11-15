@@ -150,6 +150,7 @@ nav.bottom button.on{color:#e67e22;font-weight:700;background:#fff3d6}
   <section id="p-due" class="page">
     <div class="card">
       <h2>बाँकी सूची (सबै वर्ष)</h2>
+      <input id="dSearch" placeholder="🔍 नाम, कोड, मोबाइल वा ठेगाना खोज्नुहोस्" oninput="renderDue()">
       <div class="note" id="dueSum"></div>
     </div>
     <div id="dueList"></div>
@@ -371,7 +372,7 @@ function renderCol(){
     const a = amtOf(f, curYear);
     const badge = a > 0 ? (String(p.rcpt||"").trim() ? '<span class="badge paid">✅ तिरेको</span>' : '<span class="badge warn">⚠️ रसिद बाँकी</span>') : '<span class="badge due">❌ नतिरेको</span>';
     return `<div class="fam">
-      <div class="top"><div><span class="code">${esc(f.code)}</span><div class="name">${esc(f.name)}</div></div>${badge}</div>
+      <div class="top"><div class="row2">${avatarHTML(f)}<div><span class="code">${esc(f.code)}</span><div class="name">${esc(f.name)}</div></div></div>${badge}</div>
       <div class="pay-row">
         <div><label>रकम (रु.)</label><input inputmode="decimal" value="${p.amt !== "" && p.amt !== undefined && num(p.amt) ? num(p.amt) : ""}" onchange="setAmt('${f.id}', this.value)"></div>
         <div><label>रसिद नं. (हातले)</label><input value="${esc(p.rcpt || "")}" onchange="setRcpt('${f.id}', this.value)"></div>
@@ -396,13 +397,15 @@ function setRcpt(id, v){
 
 /* ================= बाँकी ================= */
 function renderDue(){
-  const rows = db.families.map(f => ({ f, ys: unpaidYears(f), due: dueOf(f) })).filter(x => x.ys.length);
+  const dq = ($("dSearch") ? $("dSearch").value : "").trim().toLowerCase();
+  const rows = db.families.map(f => ({ f, ys: unpaidYears(f), due: dueOf(f) })).filter(x => x.ys.length)
+    .filter(x => !dq || [x.f.name, x.f.code, x.f.phone, x.f.address].join(" ").toLowerCase().includes(dq));
   const total = rows.reduce((a, x) => a + x.due, 0);
   $("dueSum").textContent = `बाँकी घरधुरी: ${rows.length} · कुल बाँकी: ${fmt(total)}`;
   $("dueList").innerHTML = rows.map(x => `<div class="fam">
-      <div class="top"><div><span class="code">${esc(x.f.code)}</span><div class="name">${esc(x.f.name)}</div>
+      <div class="top"><div class="row2">${avatarHTML(x.f)}<div><span class="code">${esc(x.f.code)}</span><div class="name">${esc(x.f.name)}</div>
       <div class="muted">📞 ${esc(x.f.phone || "—")}</div>
-      <div class="muted">बाँकी वर्ष: ${esc(x.ys.join(", "))}</div></div>
+      <div class="muted">बाँकी वर्ष: ${esc(x.ys.join(", "))}</div></div></div>
       <span class="badge due">${fmt(x.due)}</span></div></div>`).join("")
     || '<div class="card"><div class="note">सबै घरधुरीले तिरेका छन् ✅</div></div>';
 }
