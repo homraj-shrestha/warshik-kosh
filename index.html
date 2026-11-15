@@ -639,6 +639,10 @@ netPill();
   if (c.url) $("cUrl").value = c.url;
   if (c.key) $("cKey").value = c.key;
   if (!navigator.onLine && c.url) setStatus("📴 Offline — इन्टरनेट आएपछि मिल्छ");
+  else if (c.url && c.key) cloudSync(true);
+  // app खुलिरहँदा हरेक १ मिनेटमा र फेरि देखिँदा (tab/app फर्कँदा) अटो सिंक
+  setInterval(function(){ if (document.visibilityState === "visible") cloudSync(true); }, 60000);
+  document.addEventListener("visibilitychange", function(){ if (document.visibilityState === "visible") cloudSync(true); });
 })();
 showLock();
 if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
