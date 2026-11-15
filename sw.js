@@ -1,4 +1,4 @@
-const V = 'warshik-20261114134745';
+const V = 'warshik-20261115012444';
 self.addEventListener('install', function(e){
   e.waitUntil(caches.open(V).then(function(c){
     return c.addAll(['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png']);

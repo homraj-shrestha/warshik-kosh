@@ -40,6 +40,11 @@ label{font-weight:700;color:#7a4a00;font-size:14px}
 .fam{background:#fff;border:1px solid #fbe3b5;border-radius:16px;padding:12px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
 .fam .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
 .fam .name{font-size:18px;font-weight:700;color:#3b2f1e}
+.avatar{width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #f3c77a;flex:none;margin-right:10px;cursor:pointer}
+.avatar.ini{display:flex;align-items:center;justify-content:center;background:#fff3d6;color:#b35e00;font-weight:700;font-size:22px;cursor:default}
+.fam .row2{display:flex;align-items:flex-start}
+#zoomBox{position:fixed;inset:0;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;z-index:200}
+#zoomImg{max-width:92%;max-height:85%;border-radius:14px}
 .code{display:inline-block;background:#fff3d6;color:#b35e00;border-radius:8px;padding:2px 8px;font-size:13px;font-weight:700}
 .muted{color:#8a7350;font-size:14px;margin-top:4px}
 .badge{padding:6px 10px;border-radius:20px;font-size:13px;font-weight:700;white-space:nowrap}
@@ -80,7 +85,7 @@ nav.bottom button.on{color:#e67e22;font-weight:700;background:#fff3d6}
     <div class="card">
       <h2>सारांश</h2>
       <div class="kpis">
-        <div class="kpi"><small>जम्मा परिवार</small><b id="kFam">0</b></div>
+        <div class="kpi"><small>जम्मा घरधुरी</small><b id="kFam">0</b></div>
         <div class="kpi"><small>कुल संकलन</small><b id="kTot">रु. 0</b></div>
         <div class="kpi"><small>कुल बाँकी</small><b id="kDue">रु. 0</b></div>
         <div class="kpi"><small>वर्ष</small><b id="kYr">0</b></div>
@@ -93,31 +98,38 @@ nav.bottom button.on{color:#e67e22;font-weight:700;background:#fff3d6}
     </div>
   </section>
 
-  <!-- परिवार -->
+  <!-- घरधुरी -->
   <section id="p-fam" class="page">
     <div class="card">
-      <h2>नयाँ परिवार थप्नुहोस्</h2>
+      <h2>नयाँ घरधुरी थप्नुहोस्</h2>
       <label>कोड <span style="color:#b02a1b">*</span></label>
       <input id="fCode" placeholder="जस्तै: 101">
       <label>नाम <span style="color:#b02a1b">*</span></label>
-      <input id="fName" placeholder="परिवारको मुखिया">
+      <input id="fName" placeholder="घरधुरीको मुखिया">
       <label>मोबाइल नम्बर</label>
       <input id="fPhone" inputmode="tel">
       <label>ठेगाना</label>
       <input id="fAddr">
+      <label>फोटो (मुखियाको, वैकल्पिक)</label>
+      <input type="file" accept="image/*" onchange="onAddPhoto(this)">
+      <img id="fPhotoPrev" alt="" style="display:none;width:90px;height:90px;border-radius:50%;object-fit:cover;margin:4px 0 10px">
       <button class="btn" onclick="addFam()">💾 सेभ गर्नुहोस्</button>
     </div>
     <div class="card">
-      <h2>परिवार सूची</h2>
+      <h2>घरधुरी सूची</h2>
       <input id="fSearch" placeholder="🔍 नाम, कोड, मोबाइल वा ठेगाना खोज्नुहोस्" oninput="renderFam()">
       <div id="famList"></div>
     </div>
     <div id="editBox" class="card hidden">
-      <h2>परिवार सच्याउनुहोस्</h2>
+      <h2>घरधुरी सच्याउनुहोस्</h2>
       <label>कोड</label><input id="eCode">
       <label>नाम</label><input id="eName">
       <label>मोबाइल नम्बर</label><input id="ePhone" inputmode="tel">
       <label>ठेगाना</label><input id="eAddr">
+      <label>फोटो</label>
+      <input type="file" accept="image/*" onchange="onEditPhoto(this)">
+      <img id="ePhotoPrev" alt="" style="display:none;width:90px;height:90px;border-radius:50%;object-fit:cover;margin:4px 0 6px">
+      <button class="btn light" onclick="removeEditPhoto()">फोटो हटाउनुहोस्</button>
       <button class="btn" onclick="saveEdit()">✅ सेभ गर्नुहोस्</button>
       <button class="btn light" onclick="cancelEdit()">रद्द गर्नुहोस्</button>
     </div>
@@ -177,12 +189,13 @@ nav.bottom button.on{color:#e67e22;font-weight:700;background:#fff3d6}
 
 <nav class="bottom">
   <button class="on" data-p="home" onclick="show('home')"><span class="ic">🏠</span>सारांश</button>
-  <button data-p="fam" onclick="show('fam')"><span class="ic">👨‍👩‍👧</span>परिवार</button>
+  <button data-p="fam" onclick="show('fam')"><span class="ic">👨‍👩‍👧</span>घरधुरी</button>
   <button data-p="col" onclick="show('col')"><span class="ic">💰</span>संकलन</button>
   <button data-p="due" onclick="show('due')"><span class="ic">⚠️</span>बाँकी</button>
   <button data-p="set" onclick="show('set')"><span class="ic">⚙️</span>सेटिङ</button>
 </nav>
 
+<div id="zoomBox" onclick="this.style.display='none'"><img id="zoomImg" alt=""></div>
 <div id="lock">
   <div id="lockBox">
     <h2 id="lTitle">लगइन</h2>
@@ -259,7 +272,7 @@ function renderHome(){
   }).join("") : '<div class="note">अहिले कुनै वर्ष छैन। तल "नयाँ वर्ष थप्नुहोस्" थिच्नुहोस्।</div>';
 }
 
-/* ================= परिवार ================= */
+/* ================= घरधुरी ================= */
 function codeTaken(code, exceptId){
   return db.families.find(f => f.id !== exceptId && String(f.code).trim().toLowerCase() === code.toLowerCase());
 }
@@ -269,7 +282,8 @@ function addFam(){
   if (!name) return alert("नाम अनिवार्य छ।");
   const d = codeTaken(code, null);
   if (d) return alert(`कोड "${code}" पहिल्यै "${d.name}" लाई दिइएको छ।`);
-  db.families.push({ id: "f" + Date.now(), code, name, phone: $("fPhone").value.trim(), address: $("fAddr").value.trim(), pay: {}, ts: nowTs() });
+  db.families.push({ id: "f" + Date.now(), code, name, phone: $("fPhone").value.trim(), address: $("fAddr").value.trim(), photo: pendingPhoto, pay: {}, ts: nowTs() });
+  pendingPhoto = ""; $("fPhotoPrev").style.display = "none";
   ["fCode","fName","fPhone","fAddr"].forEach(i => $(i).value = "");
   save(); renderAll();
 }
@@ -279,21 +293,22 @@ function renderFam(){
   $("famList").innerHTML = list.map(f => `
     <div class="fam">
       <div class="top">
-        <div><span class="code">${esc(f.code)}</span>
+        <div class="row2">${avatarHTML(f)}<div><span class="code">${esc(f.code)}</span>
           <div class="name">${esc(f.name)}</div>
           <div class="muted">📞 ${esc(f.phone || "—")}</div>
-          <div class="muted">📍 ${esc(f.address || "—")}</div></div>
+          <div class="muted">📍 ${esc(f.address || "—")}</div></div></div>
         <div>
           <button class="btn small light" onclick="editFam('${f.id}')">✏️</button>
           <button class="btn small red" onclick="delFam('${f.id}')">🗑</button>
         </div>
       </div>
-    </div>`).join("") || '<div class="note">कुनै परिवार भेटिएन</div>';
+    </div>`).join("") || '<div class="note">कुनै घरधुरी भेटिएन</div>';
 }
 function editFam(id){
   const f = db.families.find(x => x.id === id); if (!f) return;
   editId = id;
   $("eCode").value = f.code; $("eName").value = f.name; $("ePhone").value = f.phone || ""; $("eAddr").value = f.address || "";
+  editPhotoVal = f.photo || ""; setEditPrev();
   $("editBox").classList.remove("hidden");
   $("editBox").scrollIntoView({ behavior: "smooth" });
 }
@@ -304,7 +319,7 @@ function saveEdit(){
   if (!code || !name) return alert("कोड र नाम दुवै अनिवार्य छन्।");
   const d = codeTaken(code, f.id);
   if (d) return alert(`कोड "${code}" पहिल्यै "${d.name}" लाई दिइएको छ।`);
-  f.code = code; f.name = name; f.phone = $("ePhone").value.trim(); f.address = $("eAddr").value.trim(); f.ts = nowTs();
+  f.code = code; f.name = name; f.phone = $("ePhone").value.trim(); f.address = $("eAddr").value.trim(); f.photo = editPhotoVal; f.ts = nowTs();
   cancelEdit(); save(); renderAll();
 }
 function delFam(id){
@@ -332,7 +347,7 @@ function addYear(){
 }
 function delYear(y){
   const used = db.families.filter(f => hasRec(f, y)).length;
-  if (used) return alert(`${y} सालमा ${used} परिवारको रकम वा रसिद छ। हिसाब सुरक्षित राख्न मेटाउन मिल्दैन।`);
+  if (used) return alert(`${y} सालमा ${used} घरधुरीको रकम वा रसिद छ। हिसाब सुरक्षित राख्न मेटाउन मिल्दैन।`);
   if (!confirm(`${y} साल मेटाउने हो?`)) return;
   db.years = db.years.filter(x => x !== y);
   db.yearTomb[y] = nowTs();
@@ -361,7 +376,7 @@ function renderCol(){
         <div><label>रकम (रु.)</label><input inputmode="decimal" value="${p.amt !== "" && p.amt !== undefined && num(p.amt) ? num(p.amt) : ""}" onchange="setAmt('${f.id}', this.value)"></div>
         <div><label>रसिद नं. (हातले)</label><input value="${esc(p.rcpt || "")}" onchange="setRcpt('${f.id}', this.value)"></div>
       </div></div>`;
-  }).join("") || '<div class="note">कुनै परिवार भेटिएन</div>';
+  }).join("") || '<div class="note">कुनै घरधुरी भेटिएन</div>';
 }
 function pickYear(y){ curYear = y; renderCol(); }
 function setAmt(id, v){
@@ -383,13 +398,13 @@ function setRcpt(id, v){
 function renderDue(){
   const rows = db.families.map(f => ({ f, ys: unpaidYears(f), due: dueOf(f) })).filter(x => x.ys.length);
   const total = rows.reduce((a, x) => a + x.due, 0);
-  $("dueSum").textContent = `बाँकी परिवार: ${rows.length} · कुल बाँकी: ${fmt(total)}`;
+  $("dueSum").textContent = `बाँकी घरधुरी: ${rows.length} · कुल बाँकी: ${fmt(total)}`;
   $("dueList").innerHTML = rows.map(x => `<div class="fam">
       <div class="top"><div><span class="code">${esc(x.f.code)}</span><div class="name">${esc(x.f.name)}</div>
       <div class="muted">📞 ${esc(x.f.phone || "—")}</div>
       <div class="muted">बाँकी वर्ष: ${esc(x.ys.join(", "))}</div></div>
       <span class="badge due">${fmt(x.due)}</span></div></div>`).join("")
-    || '<div class="card"><div class="note">सबै परिवारले तिरेका छन् ✅</div></div>';
+    || '<div class="card"><div class="note">सबै घरधुरीले तिरेका छन् ✅</div></div>';
 }
 
 /* ================= सेटिङ ================= */
@@ -402,6 +417,39 @@ function renderSet(){
       <input inputmode="decimal" value="${Number(db.rates[y]) || 0}" style="margin:0" onchange="setRate('${y}', this.value)">
       <button class="btn small red" style="margin:0" onclick="delYear('${y}')">🗑</button></div>`).join("")
     || '<div class="note">कुनै वर्ष छैन</div>';
+}
+
+/* ================= मुखियाको फोटो ================= */
+let pendingPhoto = "", editPhotoVal = "";
+function readPhoto(file, cb){
+  if (!file) return cb("");
+  const rd = new FileReader();
+  rd.onload = () => {
+    const im = new Image();
+    im.onload = () => {
+      const max = 240, sc = Math.min(1, max / Math.max(im.width, im.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(im.width * sc); c.height = Math.round(im.height * sc);
+      c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+      cb(c.toDataURL("image/jpeg", 0.8));
+    };
+    im.src = rd.result;
+  };
+  rd.readAsDataURL(file);
+}
+function onAddPhoto(input){
+  readPhoto(input.files[0], d => { pendingPhoto = d; $("fPhotoPrev").src = d; $("fPhotoPrev").style.display = d ? "block" : "none"; });
+}
+function onEditPhoto(input){ readPhoto(input.files[0], d => { editPhotoVal = d; setEditPrev(); }); }
+function setEditPrev(){ $("ePhotoPrev").src = editPhotoVal; $("ePhotoPrev").style.display = editPhotoVal ? "block" : "none"; }
+function removeEditPhoto(){ editPhotoVal = ""; setEditPrev(); }
+function avatarHTML(f){
+  return f.photo ? `<img class="avatar" src="${f.photo}" alt="" onclick="zoomPhoto('${f.id}')">`
+                 : `<div class="avatar ini">${esc((f.name || "?").charAt(0))}</div>`;
+}
+function zoomPhoto(id){
+  const f = db.families.find(x => x.id === id); if (!f || !f.photo) return;
+  $("zoomImg").src = f.photo; $("zoomBox").style.display = "flex";
 }
 
 /* ================= लगइन / Password ================= */
@@ -500,7 +548,7 @@ function mergeCloud(inc){
   (inc.families || []).forEach(f2 => {
     let f1 = byId[f2.id];
     if (!f1) { f1 = JSON.parse(JSON.stringify(f2)); db.families.push(f1); byId[f1.id] = f1; }
-    else if ((f2.ts || 0) > (f1.ts || 0)) { ["code","name","phone","address"].forEach(k => f1[k] = f2[k]); f1.ts = f2.ts; }
+    else if ((f2.ts || 0) > (f1.ts || 0)) { ["code","name","phone","address","photo"].forEach(k => f1[k] = f2[k]); f1.ts = f2.ts; }
     f1.pay = f1.pay || {};
     Object.keys(f2.pay || {}).forEach(y => { const p2 = f2.pay[y], p1 = f1.pay[y]; if (!p1 || (p2.ts || 0) > (p1.ts || 0)) f1.pay[y] = JSON.parse(JSON.stringify(p2)); });
   });
