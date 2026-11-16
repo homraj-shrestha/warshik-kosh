@@ -201,6 +201,15 @@ nav.bottom button.on{color:#e67e22;font-weight:700;background:#fff3d6}
       <div id="rateList"></div>
     </div>
     <div class="card">
+      <h2>📚 वंशावली र इतिहास</h2>
+      <label>इतिहास / वंशावली विवरण</label>
+      <textarea id="histText" rows="8" placeholder="परिवारको इतिहास, वंशावली, पुस्तक सम्बन्धी विवरण यहाँ लेख्नुहोस्..." onblur="saveHistory()"></textarea>
+      <button class="btn light" onclick="saveHistory()">💾 इतिहास सेभ गर्नुहोस्</button>
+      <label class="btn light" style="text-align:center;cursor:pointer">📎 किताब / फाइल अपलोड (PDF, फोटो, Word)<input type="file" multiple accept=".pdf,.doc,.docx,.txt,image/*" onchange="addFiles(this)" style="display:none"></label>
+      <div class="note">फाइलहरू यही उपकरणमा सुरक्षित हुन्छन् (Cloud Sync मा जाँदैनन्)। इतिहासको लेख भने Sync मा जान्छ।</div>
+      <div id="fileList"></div>
+    </div>
+    <div class="card">
       <h2>🖨️ वर्ष छानेर प्रिन्ट</h2>
       <select id="printYearSel"></select>
       <button class="btn" onclick="printYear()">🖨️ छानेको वर्ष प्रिन्ट (A4)</button>
@@ -299,6 +308,7 @@ function load(){
   db.families = Array.isArray(db.families) ? db.families : [];
   db.years = Array.isArray(db.years) ? db.years : [];
   db.rates = db.rates || {}; db.tomb = db.tomb || {}; db.yearTomb = db.yearTomb || {}; db.expenses = Array.isArray(db.expenses) ? db.expenses : [];
+  db.history = db.history || ""; db.historyTs = db.historyTs || 0; db.yearAdded = db.yearAdded || {};
   db.families.forEach(f => { f.pay = f.pay || {}; if (f.ts === undefined) f.ts = 0;
     Object.keys(f.pay).forEach(y => { if (f.pay[y].ts === undefined) f.pay[y].ts = 0; }); });
   curYear = db.years[db.years.length - 1] || "";
@@ -404,12 +414,13 @@ function delFam(id){
 function addYear(){
   const y = prompt("नयाँ वर्ष लेख्नुहोस् (जस्तै 2086):", String(Number(db.years[db.years.length-1] || 2080) + 1));
   if (y === null) return;
-  const yy = y.trim();
+  const yy = asciiDigits(y).trim();
   if (!/^\d{4}$/.test(yy)) return alert("वर्ष ४ अंकमा लेख्नुहोस्।");
   if (db.years.indexOf(yy) >= 0) return alert("यो वर्ष पहिल्यै छ।");
   const last = db.years[db.years.length - 1];
   db.years.push(yy); db.years.sort((a,b) => Number(a) - Number(b));
   delete db.yearTomb[yy];
+  db.yearAdded = db.yearAdded || {}; db.yearAdded[yy] = nowTs();
   db.rates[yy] = last ? (Number(db.rates[last]) || DEF_RATE) : DEF_RATE;
   curYear = yy; save(); renderAll();
 }
@@ -481,6 +492,8 @@ function renderDue(){
 
 /* ================= सेटिङ ================= */
 function renderSet(){
+  if ($("histText") && !$("histText").value && db.history) $("histText").value = db.history;
+  if ($("fileList")) renderFiles();
   if ($("orgName") && !$("orgName").value) $("orgName").value = getOrg();
   if ($("cfgStatus")) { const cc = getCfg(); $("cfgStatus").textContent = cc.url && cc.key ? "☁️ Cloud जडान भएको छ (URL/Key लुकाइएको)" : "☁️ Cloud जडान छैन"; }
   const ps = $("printYearSel"); if (ps) ps.innerHTML = db.years.map(y => `<option value="${y}">${y} साल</option>`).join("");
@@ -629,6 +642,65 @@ function openCfgEdit(){
   });
 }
 
+/* ================= वंशावली र फाइल ================= */
+function asciiDigits(s){ return String(s).replace(/[०-९]/g, d => "०१२३४५६७८९".indexOf(d)); }
+function saveHistory(){
+  const v = $("histText").value;
+  if (v === (db.history || "")) return;
+  db.history = v; db.historyTs = nowTs(); save();
+}
+function openFileDB(){
+  return new Promise((res, rej) => {
+    const r = indexedDB.open("warshik_files", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("files", { keyPath: "id" });
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function addFiles(input){
+  const list = Array.from(input.files || []);
+  if (!list.length) return;
+  const dbx = await openFileDB();
+  for (const f of list) {
+    await new Promise((res, rej) => {
+      const tx = dbx.transaction("files", "readwrite");
+      tx.objectStore("files").put({ id: "x" + Date.now() + Math.random().toString(36).slice(2, 7), name: f.name, type: f.type, size: f.size, date: nowTs(), blob: f });
+      tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+    });
+  }
+  input.value = ""; renderFiles();
+}
+async function renderFiles(){
+  if (!$("fileList") || !window.indexedDB) return;
+  const dbx = await openFileDB();
+  const items = await new Promise((res, rej) => {
+    const r = dbx.transaction("files").objectStore("files").getAll();
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+  items.sort((a, b) => b.date - a.date);
+  $("fileList").innerHTML = items.map(x => `<div class="fam"><div class="top"><div>
+      <div class="name">${esc(x.name)}</div>
+      <div class="muted">${(x.size / 1024).toFixed(0)} KB · ${new Date(x.date).toLocaleDateString("ne-NP")}</div>
+    </div><div>
+      <button class="btn small light" onclick="openFile('${x.id}')">📥 खोल्नुहोस्</button>
+      <button class="btn small red" onclick="delFile('${x.id}')">🗑</button>
+    </div></div></div>`).join("") || '<div class="note">कुनै फाइल छैन</div>';
+}
+async function openFile(id){
+  const dbx = await openFileDB();
+  const r = await new Promise((res, rej) => { const q = dbx.transaction("files").objectStore("files").get(id); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
+  if (!r) return;
+  const url = URL.createObjectURL(r.blob);
+  const a = document.createElement("a"); a.href = url; a.download = r.name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+async function delFile(id){
+  if (!confirm("यो फाइल मेटाउने हो?")) return;
+  const dbx = await openFileDB();
+  await new Promise((res, rej) => { const tx = dbx.transaction("files", "readwrite"); tx.objectStore("files").delete(id); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+  renderFiles();
+}
+
 /* ================= मुखियाको फोटो ================= */
 let pendingPhoto = "", editPhotoVal = "";
 function readPhoto(file, cb){
@@ -754,6 +826,9 @@ function mergeCloud(inc){
   db.tomb = db.tomb || {}; db.yearTomb = db.yearTomb || {};
   Object.keys(inc.tomb || {}).forEach(id => { db.tomb[id] = Math.max(db.tomb[id] || 0, inc.tomb[id] || 0); });
   Object.keys(inc.yearTomb || {}).forEach(y => { db.yearTomb[y] = Math.max(db.yearTomb[y] || 0, inc.yearTomb[y] || 0); });
+  db.yearAdded = db.yearAdded || {};
+  Object.keys(inc.yearAdded || {}).forEach(y => { db.yearAdded[y] = Math.max(db.yearAdded[y] || 0, inc.yearAdded[y] || 0); });
+  const isYearGone = y => !!db.yearTomb[y] && db.yearTomb[y] > (db.yearAdded[y] || 0);
   const byId = {}; db.families.forEach(f => byId[f.id] = f);
   (inc.families || []).forEach(f2 => {
     let f1 = byId[f2.id];
@@ -764,10 +839,11 @@ function mergeCloud(inc){
   });
   (inc.expenses || []).forEach(e => { if (db.tomb["e:" + e.id]) return; if (!db.expenses.some(x => x.id === e.id)) db.expenses.push(JSON.parse(JSON.stringify(e))); });
   db.expenses = db.expenses.filter(e => !db.tomb["e:" + e.id]);
+  if ((inc.historyTs || 0) > (db.historyTs || 0)) { db.history = inc.history || ""; db.historyTs = inc.historyTs; }
   db.families = db.families.filter(f => !(db.tomb[f.id] && db.tomb[f.id] >= (f.ts || 0)));
-  (inc.years || []).forEach(y => { if (!db.yearTomb[y] && db.years.indexOf(y) < 0) db.years.push(y); });
-  db.years = db.years.filter(y => !db.yearTomb[y]).sort((a,b) => Number(a) - Number(b));
-  Object.keys(inc.rates || {}).forEach(y => { if (db.rates[y] === undefined && !db.yearTomb[y]) db.rates[y] = inc.rates[y]; });
+  (inc.years || []).forEach(y => { if (!isYearGone(y) && db.years.indexOf(y) < 0) db.years.push(y); });
+  db.years = db.years.filter(y => !isYearGone(y)).sort((a,b) => Number(a) - Number(b));
+  Object.keys(inc.rates || {}).forEach(y => { if (db.rates[y] === undefined && !isYearGone(y)) db.rates[y] = inc.rates[y]; });
   if (db.years.indexOf(curYear) < 0) curYear = db.years[db.years.length - 1] || "";
 }
 let syncTimer = null, syncing = false;
