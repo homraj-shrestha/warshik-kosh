@@ -627,6 +627,12 @@ function renderExp(){
 const ORG_KEY = "WARSHIK_ORG_V1";
 function getOrg(){ return localStorage.getItem(ORG_KEY) || "वार्षिक कोष संकलन"; }
 function applyOrg(){ const h = document.getElementById("orgTitle"); if (h) h.textContent = "🧡 " + getOrg(); }
+function safeRender(){
+  // टाइप गर्दै गर्दा (input मा फोकस हुँदा) पेज फेरि नबनाउने, ताकि कर्सर नहट्नोस्
+  const a = document.activeElement;
+  if (a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA" || a.tagName === "SELECT")) return;
+  renderAll();
+}
 function saveOrgName(){
   const v = $("orgName").value.trim();
   if (!v) return alert("नाम लेख्नुहोस्।");
@@ -860,7 +866,12 @@ async function cloudSync(auto){
   syncing = true; setStatus("🔄 Sync हुँदैछ...");
   try {
     const r = await cloudReq("sync", {});
-    if (r.db && Array.isArray(r.db.families)) { mergeCloud(r.db); localStorage.setItem(KEY, JSON.stringify(db)); renderAll(); }
+    if (r.db && Array.isArray(r.db.families)) {
+      const before = JSON.stringify(db);
+      mergeCloud(r.db);
+      localStorage.setItem(KEY, JSON.stringify(db));
+      if (JSON.stringify(db) !== before) safeRender();
+    }
     await cloudReq("push", db);
     setStatus("✅ Sync भयो: " + new Date().toLocaleTimeString("ne-NP"));
   } catch(e) {
