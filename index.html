@@ -45,8 +45,15 @@ label{font-weight:700;color:#7a4a00;font-size:14px}
 .fam .row2{display:flex;align-items:flex-start}
 
 #printArea{display:none}
+#sigFoot{display:none}
+.sigt{width:100%;border-collapse:collapse}
+.sigt td{width:33%;vertical-align:top;padding:2px 6px;font-size:11px}
+.stamp{display:inline-block;border:1px dashed #555;width:110px;height:50px;text-align:center;line-height:50px;color:#777;margin-top:4px}
+
 @media print{
-  body > *:not(#printArea){display:none!important}
+  body > *:not(#printArea):not(#sigFoot){display:none!important}
+  #sigFoot{display:block!important;position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #000;padding:3px 8px}
+  #printArea{padding-bottom:40mm}
   #printArea{display:block!important;color:#000;background:#fff;font-size:11px}
   @page{size:A4 landscape;margin:8mm}
   #printArea h1{font-size:16px;margin:0 0 4px}
@@ -87,7 +94,7 @@ nav.bottom button.on{color:#e67e22;font-weight:700;background:#fff3d6}
 <body>
 <header>
   <div class="row">
-    <h1>🧡 वार्षिक कोष संकलन</h1>
+    <h1 id="orgTitle">🧡 वार्षिक कोष संकलन</h1>
     <span id="pill">📴 Offline</span>
   </div>
 </header>
@@ -172,12 +179,19 @@ nav.bottom button.on{color:#e67e22;font-weight:700;background:#fff3d6}
   <!-- सेटिङ -->
   <section id="p-set" class="page">
     <div class="card">
+      <h2>🏷️ शीर्षक (संस्थाको नाम)</h2>
+      <input id="orgName" placeholder="जस्तै: वार्षिक कोष संकलन">
+      <button class="btn" onclick="saveOrgName()">💾 नाम सेभ गर्नुहोस्</button>
+    </div>
+    <div class="card">
       <h2>☁️ Cloud Sync</h2>
-      <label>Web App URL</label>
+      <div id="cfgEdit" style="display:none"><label>Web App URL</label>
       <input id="cUrl" placeholder="https://script.google.com/.../exec">
       <label>Sync Key</label>
       <input id="cKey" placeholder="गोप्य शब्द">
-      <button class="btn" onclick="saveCloud()">💾 सेभ र Sync</button>
+      <button class="btn" onclick="saveCloud()">💾 सेभ र Sync</button></div>
+      <button class="btn light" id="cfgOpen" onclick="openCfgEdit()">✏️ URL / Key सम्पादन (Password चाहिन्छ)</button>
+      <div class="note" id="cfgStatus"></div>
       <button class="btn light" onclick="cloudSync(false)">🔄 अहिले Sync गर्नुहोस्</button>
       <button class="btn light" onclick="forcePush()">⬆️ यो उपकरणलाई सही मान्नुहोस्</button>
       <div class="status" id="syncStatus"></div>
@@ -244,6 +258,12 @@ nav.bottom button.on{color:#e67e22;font-weight:700;background:#fff3d6}
 
 <div id="zoomBox" onclick="this.style.display='none'"><img id="zoomImg" alt=""></div>
 <div id="printArea"></div>
+<div id="sigFoot"><table class="sigt"><tr>
+  <td>अध्यक्ष<br><br>हस्ताक्षर: ______________<br>मिति: __________<div class="stamp">छाप</div></td>
+  <td>सचिव<br><br>हस्ताक्षर: ______________<br>मिति: __________<div class="stamp">छाप</div></td>
+  <td>कोषाध्यक्ष<br><br>हस्ताक्षर: ______________<br>मिति: __________<div class="stamp">छाप</div></td>
+</tr></table></div>
+
 <div id="lock">
   <div id="lockBox">
     <h2 id="lTitle">लगइन</h2>
@@ -461,6 +481,8 @@ function renderDue(){
 
 /* ================= सेटिङ ================= */
 function renderSet(){
+  if ($("orgName") && !$("orgName").value) $("orgName").value = getOrg();
+  if ($("cfgStatus")) { const cc = getCfg(); $("cfgStatus").textContent = cc.url && cc.key ? "☁️ Cloud जडान भएको छ (URL/Key लुकाइएको)" : "☁️ Cloud जडान छैन"; }
   const ps = $("printYearSel"); if (ps) ps.innerHTML = db.years.map(y => `<option value="${y}">${y} साल</option>`).join("");
   const c = getCfg();
   if (!$("cUrl").value && c.url) $("cUrl").value = c.url;
@@ -480,7 +502,7 @@ function buildPrint(){
   let tot = 0, due = 0;
   db.years.forEach(y => { tot += sumYear(y); });
   db.families.forEach(f => { due += dueOf(f); });
-  let h = `<h1>वार्षिक कोष संकलन — पूर्ण विवरण</h1>
+  let h = `<h1>${esc(getOrg())} — पूर्ण विवरण</h1>
   <div>छपाइ मिति: ${esc(today)} · जम्मा घरधुरी: ${n} · कुल संकलन: ${fmt(tot)} · कुल बाँकी: ${fmt(due)}</div>`;
   h += `<h2>वर्षगत सारांश</h2><table><tr><th>वर्ष</th><th>दर</th><th>अपेक्षित</th><th>संकलन</th><th>तिरेका</th><th>नतिरेका</th></tr>`;
   db.years.forEach(y => {
@@ -521,7 +543,7 @@ function buildYearPrint(y){
   const paidRows = db.families.map((f, i) => ({ f, i, a: amtOf(f, y), r: f.pay[y] ? String(f.pay[y].rcpt || "") : "" })).filter(x => x.a > 0);
   const dueRows = db.families.map((f, i) => ({ f, i })).filter(x => amtOf(x.f, y) <= 0);
   const expRows = (db.expenses || []).filter(e => e.year === y);
-  let h = `<h1>वार्षिक कोष संकलन — ${esc(y)} साल</h1>
+  let h = `<h1>${esc(getOrg())} — ${esc(y)} साल</h1>
   <div>दर: ${fmt(rate)} · छपाइ मिति: ${esc(today)}</div>`;
   h += `<h2>१. सारांश</h2><table><tr><th>कुल घरधुरी</th><th>तिरेका</th><th>नतिरेका</th><th>कुल संकलन</th><th>कुल खर्च</th><th>मौज्दात</th><th>बाँकी रकम</th></tr>
   <tr><td>${n}</td><td>${paid}</td><td>${unpaid}</td><td>${fmt(got)}</td><td>${fmt(exp)}</td><td>${fmt(got - exp)}</td><td>${fmt(Math.max(0, rate * unpaid))}</td></tr></table>`;
@@ -586,6 +608,25 @@ function renderExp(){
     </div><button class="btn small red" onclick="delExp('${e.id}')">🗑</button></div></div>`).join("")
     || '<div class="note">यो वर्षमा खर्च छैन</div>';
   $("expSum").textContent = curYear ? `जम्मा खर्च: ${fmt(expOf(curYear))} · मौज्दात (संकलन − खर्च): ${fmt(sumYear(curYear) - expOf(curYear))}` : "";
+}
+
+/* ================= संस्थाको शीर्षक ================= */
+const ORG_KEY = "WARSHIK_ORG_V1";
+function getOrg(){ return localStorage.getItem(ORG_KEY) || "वार्षिक कोष संकलन"; }
+function applyOrg(){ const h = document.getElementById("orgTitle"); if (h) h.textContent = "🧡 " + getOrg(); }
+function saveOrgName(){
+  const v = $("orgName").value.trim();
+  if (!v) return alert("नाम लेख्नुहोस्।");
+  localStorage.setItem(ORG_KEY, v); applyOrg(); alert("शीर्षक सेभ भयो।");
+}
+function openCfgEdit(){
+  const a = getAuth(); if (!a) return;
+  const p = prompt("Password लेख्नुहोस्:");
+  if (p === null) return;
+  derive(p, a.salt).then(h => {
+    if (h !== a.hash) return alert("Password मिलेन।");
+    $("cfgEdit").style.display = "block"; $("cfgOpen").style.display = "none";
+  });
 }
 
 /* ================= मुखियाको फोटो ================= */
@@ -800,6 +841,7 @@ function resetAll(){
 
 /* ================= सुरुवात ================= */
 load();
+applyOrg();
 renderAll();
 netPill();
 (function(){
