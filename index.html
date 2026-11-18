@@ -452,7 +452,7 @@ function renderCol(){
     const a = amtOf(f, curYear);
     const badge = a > 0 ? (String(p.rcpt||"").trim() ? '<span class="badge paid">✅ तिरेको</span>' : '<span class="badge warn">⚠️ रसिद बाँकी</span>') : '<span class="badge due">❌ नतिरेको</span>';
     return `<div class="fam">
-      <div class="top"><div class="row2">${avatarHTML(f)}<div><span class="code">${esc(f.code)}</span><div class="name">${esc(f.name)}</div></div></div>${badge}</div>
+      <div class="top"><div class="row2">${avatarHTML(f)}<div><span class="code">${esc(f.code)}</span><div class="name" style="cursor:pointer;text-decoration:underline" onclick="showFamDetail('${f.id}')">${esc(f.name)}</div></div></div>${badge}</div>
       <div class="pay-row">
         <div><label>रकम (रु.)</label><input inputmode="decimal" value="${p.amt !== "" && p.amt !== undefined && num(p.amt) ? num(p.amt) : ""}" onchange="setAmt('${f.id}', this.value)"></div>
         <div><label>रसिद नं. (हातले)</label><input value="${esc(p.rcpt || "")}" onchange="setRcpt('${f.id}', this.value)"></div>
@@ -705,6 +705,38 @@ async function delFile(id){
   const dbx = await openFileDB();
   await new Promise((res, rej) => { const tx = dbx.transaction("files", "readwrite"); tx.objectStore("files").delete(id); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
   renderFiles();
+}
+
+/* ================= परिवारको सबै सालको विवरण ================= */
+function showFamDetail(id){
+  const f = db.families.find(x => x.id === id); if (!f) return;
+  let rows = "", paid = 0, dueTotal = 0;
+  db.years.forEach(y => {
+    const a = amtOf(f, y), rate = Number(db.rates[y]) || 0;
+    const r = f.pay[y] ? String(f.pay[y].rcpt || "") : "";
+    if (a > 0) paid += a; else dueTotal += rate;
+    rows += `<tr><td>${esc(y)}</td><td>${fmt(rate)}</td><td>${a > 0 ? fmt(a) : "—"}</td><td>${esc(r)}</td><td>${a > 0 ? "तिरेको" : "नतिरेको"}</td></tr>`;
+  });
+  const old = document.getElementById("famDet"); if (old) old.remove();
+  const wrap = document.createElement("div");
+  wrap.id = "famDet";
+  wrap.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:300;padding:12px";
+  wrap.innerHTML = `<div style="background:#fff;border-radius:16px;padding:16px;width:100%;max-width:560px;max-height:88vh;overflow:auto;color:#3b2f1e">
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px">${avatarHTML(f)}<div>
+      <div style="font-size:18px;font-weight:700">${esc(f.name)}</div>
+      <div style="color:#8a7350">कोड: ${esc(f.code)}</div>
+      <div style="color:#8a7350">📞 ${esc(f.phone || "—")}</div>
+      <div style="color:#8a7350">📍 ${esc(f.address || "—")}</div>
+    </div></div>
+    <table style="width:100%;border-collapse:collapse;font-size:14px">
+      <tr style="background:#fff3d6"><th style="padding:6px;text-align:left">साल</th><th style="padding:6px;text-align:left">दर</th><th style="padding:6px;text-align:left">रकम</th><th style="padding:6px;text-align:left">रसिद नं.</th><th style="padding:6px;text-align:left">स्थिति</th></tr>
+      ${rows || '<tr><td colspan="5" style="text-align:center">कुनै वर्ष छैन</td></tr>'}
+    </table>
+    <div style="margin-top:10px;font-weight:700">जम्मा तिरेको: ${fmt(paid)} · जम्मा बाँकी: ${fmt(dueTotal)}</div>
+    <button onclick="document.getElementById('famDet').remove()" style="margin-top:12px;width:100%;padding:12px;font-size:16px;border:0;border-radius:12px;background:#e67e22;color:#fff">बन्द गर्नुहोस्</button>
+  </div>`;
+  wrap.addEventListener("click", e => { if (e.target === wrap) wrap.remove(); });
+  document.body.appendChild(wrap);
 }
 
 /* ================= मुखियाको फोटो ================= */
