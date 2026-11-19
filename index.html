@@ -164,6 +164,7 @@ nav.bottom button.on{color:#e67e22;font-weight:700;background:#fff3d6}
       <input id="cSearch" placeholder="🔍 नाम वा कोड खोज्नुहोस्" oninput="renderCol()">
     </div>
     <div id="colList"></div>
+  
   </section>
 
   <!-- बाँकी -->
@@ -228,6 +229,23 @@ nav.bottom button.on{color:#e67e22;font-weight:700;background:#fff3d6}
       <button class="btn red" onclick="resetAll()">⚠️ सबै डेटा मेटाउनुहोस्</button>
     </div>
   </section>
+  <!-- सहयोगकर्ता -->
+  <section id="p-don" class="page">
+    <div class="card" id="donorCard">
+    <h2>🤝 सहयोगकर्ता / दाता सूची</h2>
+    <div class="note">यो सूची वर्षअनुसार होइन। सहयोग गरेको मिति सहित सबै सहयोगकर्ता यहाँ राख्नुहोस्। जम्मा रकम कुल संकलनमा जोडिन्छ।</div>
+    <label>सहयोग गरेको मिति (नेपाली)</label><input id="dDate" placeholder="२०८३-०४-३०">
+    <label>कोड (वैकल्पिक)</label><input id="dCode">
+    <label>नाम <span style="color:#b02a1b">*</span></label><input id="dName">
+    <label>ठेगाना</label><input id="dAddr">
+    <label>कन्ट्याक्ट नम्बर</label><input id="dPhone" inputmode="tel">
+    <label>रकम (रु.) <span style="color:#b02a1b">*</span></label><input id="dAmt" inputmode="decimal">
+    <label>रसिद नं. (वैकल्पिक)</label><input id="dRcpt">
+    <button class="btn" onclick="addDonor()">💾 सहयोगकर्ता सेभ गर्नुहोस्</button>
+    <div class="note" id="donSum"></div>
+    <div id="donList"></div>
+  </div>
+  </section>
   <!-- खर्च -->
   <section id="p-exp" class="page">
     <div class="card">
@@ -261,6 +279,7 @@ nav.bottom button.on{color:#e67e22;font-weight:700;background:#fff3d6}
   <button data-p="fam" onclick="show('fam')"><span class="ic">👨‍👩‍👧</span>घरधुरी</button>
   <button data-p="col" onclick="show('col')"><span class="ic">💰</span>संकलन</button>
   <button data-p="exp" onclick="show('exp')"><span class="ic">💸</span>खर्च</button>
+  <button data-p="don" onclick="show('don')"><span class="ic">🤝</span>दाता</button>
   <button data-p="due" onclick="show('due')"><span class="ic">⚠️</span>बाँकी</button>
   <button data-p="set" onclick="show('set')"><span class="ic">⚙️</span>सेटिङ</button>
 </nav>
@@ -309,6 +328,7 @@ function load(){
   db.years = Array.isArray(db.years) ? db.years : [];
   db.rates = db.rates || {}; db.tomb = db.tomb || {}; db.yearTomb = db.yearTomb || {}; db.expenses = Array.isArray(db.expenses) ? db.expenses : [];
   db.history = db.history || ""; db.historyTs = db.historyTs || 0; db.yearAdded = db.yearAdded || {};
+  db.donors = Array.isArray(db.donors) ? db.donors : [];
   db.families.forEach(f => { f.pay = f.pay || {}; if (f.ts === undefined) f.ts = 0;
     Object.keys(f.pay).forEach(y => { if (f.pay[y].ts === undefined) f.pay[y].ts = 0; }); });
   curYear = db.years[db.years.length - 1] || "";
@@ -326,19 +346,19 @@ const dueOf = f => unpaidYears(f).reduce((a, y) => a + (Number(db.rates[y]) || 0
 
 /* ================= पृष्ठ ================= */
 function show(p){
-  ["home","fam","col","exp","due","set"].forEach(id => $("p-" + id).classList.toggle("active", id === p));
+  ["home","fam","col","exp","don","due","set"].forEach(id => $("p-" + id).classList.toggle("active", id === p));
   document.querySelectorAll("nav.bottom button").forEach(b => b.classList.toggle("on", b.dataset.p === p));
   window.scrollTo(0, 0);
   renderAll();
 }
-function renderAll(){ renderHome(); renderFam(); renderCol(); renderExp(); renderDue(); renderSet(); }
+function renderAll(){ renderHome(); renderFam(); renderCol(); renderExp(); renderDonors(); renderDue(); renderSet(); }
 
 function renderHome(){
   let tot = 0, due = 0;
   db.years.forEach(y => { tot += sumYear(y); });
   db.families.forEach(f => { due += dueOf(f); });
   $("kFam").textContent = db.families.length;
-  $("kTot").textContent = fmt(tot);
+  $("kTot").textContent = fmt(tot + donorsTotal());
   $("kDue").textContent = fmt(due);
   $("kYr").textContent = db.years.length;
   $("yearList").innerHTML = db.years.length ? db.years.map(y => {
@@ -459,7 +479,7 @@ function renderCol(){
       </div></div>`;
   }).join("") || '<div class="note">कुनै घरधुरी भेटिएन</div>';
 }
-function pickYear(y){ curYear = y; renderCol(); }
+function pickYear(y){ curYear = y; renderCol(); renderDonors(); }
 function setAmt(id, v){
   const f = db.families.find(x => x.id === id); if (!f || !curYear) return;
   const n = num(v);
@@ -539,6 +559,11 @@ function buildPrint(){
   h += `<h2>बाँकी विवरण (${rows.length} घरधुरी)</h2><table><tr><th>नाम</th><th>कोड</th><th>मोबाइल</th><th>बाँकी वर्ष</th><th>बाँकी रकम</th></tr>`;
   rows.forEach(x => { h += `<tr><td>${esc(x.f.name)}</td><td>${esc(x.f.code)}</td><td>${esc(x.f.phone || "")}</td><td>${esc(x.ys.join(", "))}</td><td>${fmt(x.d)}</td></tr>`; });
   h += `</table>`;
+  if ((db.donors || []).length) {
+    h += `<h2>सहयोगकर्ता सूची (${db.donors.length} जना)</h2><table><tr><th>सि.नं.</th><th>मिति</th><th>कोड</th><th>नाम</th><th>ठेगाना</th><th>कन्ट्याक्ट</th><th>रकम</th><th>रसिद नं.</th></tr>`;
+    db.donors.forEach((d, i) => { h += `<tr><td>${i + 1}</td><td>${esc(d.date || "")}</td><td>${esc(d.code || "")}</td><td>${esc(d.name)}</td><td>${esc(d.address || "")}</td><td>${esc(d.phone || "")}</td><td>${fmt(d.amount)}</td><td>${esc(d.rcpt || "")}</td></tr>`; });
+    h += `<tr><th colspan="6">सहयोगकर्ताको जम्मा</th><th>${fmt(donorsTotal())}</th><th></th></tr></table>`;
+  }
   return h;
 }
 function printAll(){
@@ -567,7 +592,13 @@ function buildYearPrint(y){
   h += `</table>`;
   h += `<h2>३. संकलन विवरण (तिरेका ${paidRows.length} घरधुरी)</h2><table><tr><th>सि.नं.</th><th>कोड</th><th>नाम</th><th>रकम</th><th>रसिद नं.</th></tr>`;
   paidRows.forEach(x => { h += `<tr><td>${x.i + 1}</td><td>${esc(x.f.code)}</td><td>${esc(x.f.name)}</td><td>${fmt(x.a)}</td><td>${esc(x.r)}</td></tr>`; });
-  h += `<tr><th colspan="3">जम्मा संकलन</th><th>${fmt(got)}</th><th></th></tr></table>`;
+  h += `<tr><th colspan="3">जम्मा संकलन (परिवार)</th><th>${fmt(got)}</th><th></th></tr></table>`;
+  const donRows = [];
+  if (donRows.length) {
+    h += `<h2>सहयोगकर्ता विवरण (${donRows.length} जना)</h2><table><tr><th>सि.नं.</th><th>कोड</th><th>नाम</th><th>ठेगाना</th><th>कन्ट्याक्ट</th><th>रकम</th><th>रसिद नं.</th></tr>`;
+    donRows.forEach((d, i) => { h += `<tr><td>${i + 1}</td><td>${esc(d.code || "")}</td><td>${esc(d.name)}</td><td>${esc(d.address || "")}</td><td>${esc(d.phone || "")}</td><td>${fmt(d.amount)}</td><td>${esc(d.rcpt || "")}</td></tr>`; });
+    h += `<tr><th colspan="5">सहयोगकर्ताको जम्मा</th><th>${fmt(donorsOf(y))}</th><th></th></tr></table>`;
+  }
   h += `<h2>४. बाँकी विवरण (नतिरेका ${dueRows.length} घरधुरी)</h2><table><tr><th>सि.नं.</th><th>कोड</th><th>नाम</th><th>मोबाइल</th><th>बाँकी रकम</th></tr>`;
   dueRows.forEach(x => { h += `<tr><td>${x.i + 1}</td><td>${esc(x.f.code)}</td><td>${esc(x.f.name)}</td><td>${esc(x.f.phone || "")}</td><td>${fmt(rate)}</td></tr>`; });
   h += `<tr><th colspan="4">जम्मा बाँकी</th><th>${fmt(rate * dueRows.length)}</th></tr></table>`;
@@ -739,6 +770,36 @@ function showFamDetail(id){
   document.body.appendChild(wrap);
 }
 
+/* ================= सहयोगकर्ता / दाता ================= */
+function donorsTotal(){ return (db.donors || []).reduce((a, d) => a + num(d.amount), 0); }
+function addDonor(){
+  const name = $("dName").value.trim(), amt = num($("dAmt").value);
+  if (!name) return alert("नाम लेख्नुहोस्।");
+  if (amt <= 0) return alert("रकम लेख्नुहोस्।");
+  db.donors.push({ id: "d" + Date.now(), date: $("dDate").value.trim(), code: $("dCode").value.trim(), name, address: $("dAddr").value.trim(), phone: $("dPhone").value.trim(), amount: amt, rcpt: $("dRcpt").value.trim(), ts: nowTs() });
+  ["dDate","dCode","dName","dAddr","dPhone","dAmt","dRcpt"].forEach(i => $(i).value = "");
+  save(); renderAll();
+}
+function delDonor(id){
+  if (!db.donors.find(x => x.id === id)) return;
+  if (!confirm("यो सहयोगकर्ताको रकम मेटाउने हो? कुल संकलन पनि घट्छ।")) return;
+  db.tomb = db.tomb || {}; db.tomb["d:" + id] = nowTs();
+  db.donors = db.donors.filter(x => x.id !== id);
+  save(); renderAll();
+}
+function renderDonors(){
+  if (!$("donList")) return;
+  const list = (db.donors || []).slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  $("donList").innerHTML = list.map(d => `<div class="fam"><div class="top"><div>
+      <span class="code">${esc(d.code || "—")}</span>
+      <div class="name">${esc(d.name)} — ${fmt(d.amount)}</div>
+      <div class="muted">📅 ${esc(d.date || "—")} · 📞 ${esc(d.phone || "—")}</div>
+      <div class="muted">📍 ${esc(d.address || "—")}${d.rcpt ? " · 🧾 रसिद: " + esc(d.rcpt) : ""}</div>
+    </div><button class="btn small red" onclick="delDonor('${d.id}')">🗑</button></div></div>`).join("")
+    || '<div class="note">कुनै सहयोगकर्ता छैन</div>';
+  if ($("donSum")) $("donSum").textContent = `सहयोगकर्ताको जम्मा: ${fmt(donorsTotal())}`;
+}
+
 /* ================= मुखियाको फोटो ================= */
 let pendingPhoto = "", editPhotoVal = "";
 function readPhoto(file, cb){
@@ -877,6 +938,8 @@ function mergeCloud(inc){
   });
   (inc.expenses || []).forEach(e => { if (db.tomb["e:" + e.id]) return; if (!db.expenses.some(x => x.id === e.id)) db.expenses.push(JSON.parse(JSON.stringify(e))); });
   db.expenses = db.expenses.filter(e => !db.tomb["e:" + e.id]);
+  (inc.donors || []).forEach(d => { if (db.tomb["d:" + d.id]) return; if (!db.donors.some(x => x.id === d.id)) db.donors.push(JSON.parse(JSON.stringify(d))); });
+  db.donors = db.donors.filter(d => !db.tomb["d:" + d.id]);
   if ((inc.historyTs || 0) > (db.historyTs || 0)) { db.history = inc.history || ""; db.historyTs = inc.historyTs; }
   db.families = db.families.filter(f => !(db.tomb[f.id] && db.tomb[f.id] >= (f.ts || 0)));
   (inc.years || []).forEach(y => { if (!isYearGone(y) && db.years.indexOf(y) < 0) db.years.push(y); });
