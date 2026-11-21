@@ -52,8 +52,13 @@ label{font-weight:700;color:#7a4a00;font-size:14px}
 
 @media print{
   body > *:not(#printArea):not(#sigFoot){display:none!important}
-  #sigFoot{display:block!important;position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #000;padding:3px 8px}
-  #printArea{padding-bottom:40mm}
+  #sigFoot{display:none!important}
+  #printArea > table.pw{width:100%;border:0;margin:0}
+  #printArea{max-width:100%;overflow:hidden;font-size:10px}
+  #printArea table{max-width:100%}
+  #printArea td,#printArea th{overflow-wrap:anywhere;word-break:break-word}
+  #printArea > table.pw > tbody > tr > td,#printArea > table.pw > tfoot > tr > td{border:0!important;padding:0!important;margin:0!important;width:100%}
+  #printArea table.sigt td{border:0!important;padding:2px 6px!important}
   #printArea{display:block!important;color:#000;background:#fff;font-size:11px}
   @page{size:A4 landscape;margin:8mm}
   #printArea h1{font-size:16px;margin:0 0 4px}
@@ -210,6 +215,13 @@ nav.bottom button.on{color:#e67e22;font-weight:700;background:#fff3d6}
       <div class="note">फाइलहरू यही उपकरणमा सुरक्षित हुन्छन् (Cloud Sync मा जाँदैनन्)। इतिहासको लेख भने Sync मा जान्छ।</div>
       <div id="fileList"></div>
     </div>
+    <div class="card"><h2>👥 पदाधिकारी (छपाइको हस्ताक्षरमा)</h2>
+      <label>अध्यक्षको नाम</label><input id="offChair" placeholder="जस्तै: राम बहादुर श्रेष्ठ" onchange="saveOfficers()">
+      <label>सचिवको नाम</label><input id="offSec" placeholder="जस्तै: सीता श्रेष्ठ" onchange="saveOfficers()">
+      <label>कोषाध्यक्षको नाम</label><input id="offTreas" placeholder="जस्तै: हरि श्रेष्ठ" onchange="saveOfficers()">
+      <div class="note" id="offNow"></div>
+      <button class="btn" onclick="saveOfficers()">💾 पदाधिकारी सेभ गर्नुहोस्</button>
+    </div>
     <div class="card">
       <h2>🖨️ वर्ष छानेर प्रिन्ट</h2>
       <select id="printYearSel"></select>
@@ -327,7 +339,7 @@ function load(){
   db.families = Array.isArray(db.families) ? db.families : [];
   db.years = Array.isArray(db.years) ? db.years : [];
   db.rates = db.rates || {}; db.tomb = db.tomb || {}; db.yearTomb = db.yearTomb || {}; db.expenses = Array.isArray(db.expenses) ? db.expenses : [];
-  db.history = db.history || ""; db.historyTs = db.historyTs || 0; db.yearAdded = db.yearAdded || {};
+  db.history = db.history || ""; db.historyTs = db.historyTs || 0; db.officers = db.officers || {}; db.officersTs = db.officersTs || 0; db.yearAdded = db.yearAdded || {};
   db.donors = Array.isArray(db.donors) ? db.donors : [];
   db.families.forEach(f => { f.pay = f.pay || {}; if (f.ts === undefined) f.ts = 0;
     Object.keys(f.pay).forEach(y => { if (f.pay[y].ts === undefined) f.pay[y].ts = 0; }); });
@@ -512,6 +524,11 @@ function renderDue(){
 
 /* ================= सेटिङ ================= */
 function renderSet(){
+  const off = db.officers || {};
+  if ($("offChair") && document.activeElement !== $("offChair")) $("offChair").value = off.chair || "";
+  if ($("offSec") && document.activeElement !== $("offSec")) $("offSec").value = off.sec || "";
+  if ($("offTreas") && document.activeElement !== $("offTreas")) $("offTreas").value = off.treas || "";
+  if ($("offNow")) $("offNow").textContent = "सेभ भएको: अध्यक्ष: " + (off.chair || "—") + " · सचिव: " + (off.sec || "—") + " · कोषाध्यक्ष: " + (off.treas || "—");
   if ($("histText") && !$("histText").value && db.history) $("histText").value = db.history;
   if ($("fileList")) renderFiles();
   if ($("orgName") && !$("orgName").value) $("orgName").value = getOrg();
@@ -566,14 +583,6 @@ function buildPrint(){
   }
   return h;
 }
-function printAll(){
-  if (!db.families.length) return alert("छाप्न कुनै घरधुरी छैन।");
-  $("printArea").innerHTML = buildPrint();
-  window.print();
-}
-
-
-/* ================= एक वर्षको छुट्टै रिपोर्ट (portrait) ================= */
 function buildYearPrint(y){
   const today = new Date().toLocaleDateString("ne-NP");
   const rate = Number(db.rates[y]) || 0, n = db.families.length;
@@ -608,20 +617,34 @@ function buildYearPrint(y){
   <tr><th colspan="5">मौज्दात (संकलन − खर्च)</th><th>${fmt(got - exp)}</th></tr></table>`;
   return h;
 }
+
+/* ================= छपाइ (अलग विन्डोमा, साफ पेजमा) ================= */
+function openPrintWindow(body, orient){
+  const w = window.open("", "_blank");
+  if (!w) { alert("प्रिन्ट विन्डो खुलेन। Pop-up अनुमति दिनुहोस्।"); return; }
+  w.document.write('<!DOCTYPE html><html lang="ne"><head><meta charset="utf-8"><title>छपाइ</title><style>' +
+    '@page{size:A4 ' + orient + ';margin:10mm}' +
+    'body{font-family:Arial,"Noto Sans Devanagari",sans-serif;color:#000;font-size:10px;margin:0;background:#fff}' +
+    'table{width:100%;border-collapse:collapse;margin-bottom:6px}' +
+    'th,td{border:1px solid #777;padding:3px;text-align:left;vertical-align:top;overflow-wrap:anywhere}' +
+    'th{background:#eee}h1{font-size:15px;margin:0 0 4px}h2{font-size:12px;margin:8px 0 4px}' +
+    '.pw,.pw>tbody>tr>td,.pw>tfoot>tr>td{border:0;padding:0;margin:0}.sigt td{border:0;padding:2px 6px;font-size:10px}' +
+    '.stamp{display:block;height:50px;margin-top:4px;color:#777;font-size:10px}' +
+    '</style></head><body>' + body + '</body></html>');
+  w.document.close();
+  setTimeout(function(){ w.focus(); w.print(); }, 300);
+}
 function printYear(){
   const y = $("printYearSel").value;
   if (!y) return alert("वर्ष छान्नुहोस्।");
   if (!db.families.length) return alert("छाप्न कुनै घरधुरी छैन।");
-  $("printArea").innerHTML = buildYearPrint(y);
-  const st = document.createElement("style"); st.id = "yearPage";
-  st.textContent = "@page{size:A4 portrait;margin:10mm}";
-  document.head.appendChild(st);
-  const done = () => { const s = document.getElementById("yearPage"); if (s) s.remove(); window.removeEventListener("afterprint", done); };
-  window.addEventListener("afterprint", done);
-  window.print();
+  openPrintWindow(wrapPrint(buildYearPrint(y)), "portrait");
+}
+function printAll(){
+  if (!db.families.length) return alert("छाप्न कुनै घरधुरी छैन।");
+  openPrintWindow(wrapPrint(buildPrint()), "landscape");
 }
 
-/* ================= खर्च ================= */
 function expOf(y){ return (db.expenses || []).filter(e => e.year === y).reduce((a, e) => a + num(e.amount), 0); }
 function addExp(){
   if (!curYear) return alert("पहिले वर्ष छान्नुहोस्।");
@@ -679,6 +702,11 @@ function openCfgEdit(){
   });
 }
 
+/* ================= छपाइको हस्ताक्षर (हरेक पानाको तल) ================= */
+function wrapPrint(h){
+  const sig = sigHTML();
+  return `<table class="pw"><tfoot><tr><td>${sig}</td></tr></tfoot><tbody><tr><td>${h}</td></tr></tbody></table>`;
+}
 /* ================= वंशावली र फाइल ================= */
 function asciiDigits(s){ return String(s).replace(/[०-९]/g, d => "०१२३४५६७८९".indexOf(d)); }
 function saveHistory(){
@@ -798,6 +826,22 @@ function renderDonors(){
     </div><button class="btn small red" onclick="delDonor('${d.id}')">🗑</button></div></div>`).join("")
     || '<div class="note">कुनै सहयोगकर्ता छैन</div>';
   if ($("donSum")) $("donSum").textContent = `सहयोगकर्ताको जम्मा: ${fmt(donorsTotal())}`;
+}
+
+/* ================= पदाधिकारी (छपाइको हस्ताक्षर) ================= */
+function saveOfficers(){
+  db.officers = {
+    chair: ($("offChair").value || "").trim(),
+    sec: ($("offSec").value || "").trim(),
+    treas: ($("offTreas").value || "").trim()
+  };
+  db.officersTs = nowTs(); save();
+  const o = db.officers; $("offNow").textContent = "सेभ भएको: अध्यक्ष: " + (o.chair || "—") + " · सचिव: " + (o.sec || "—") + " · कोषाध्यक्ष: " + (o.treas || "—");
+}
+function sigHTML(){
+  const o = db.officers || {};
+  const col = (title, name) => `<td><b style="font-size:13px;text-decoration:underline">${title}</b><br><b>${esc(name || "")}</b><br><br>हस्ताक्षर: ______________<br>मिति: __________<div class="stamp">छाप</div></td>`;
+  return `<table class="sigt"><tr>${col("अध्यक्ष", o.chair)}${col("सचिव", o.sec)}${col("कोषाध्यक्ष", o.treas)}</tr></table>`;
 }
 
 /* ================= मुखियाको फोटो ================= */
@@ -941,6 +985,7 @@ function mergeCloud(inc){
   (inc.donors || []).forEach(d => { if (db.tomb["d:" + d.id]) return; if (!db.donors.some(x => x.id === d.id)) db.donors.push(JSON.parse(JSON.stringify(d))); });
   db.donors = db.donors.filter(d => !db.tomb["d:" + d.id]);
   if ((inc.historyTs || 0) > (db.historyTs || 0)) { db.history = inc.history || ""; db.historyTs = inc.historyTs; }
+  if ((inc.officersTs || 0) > (db.officersTs || 0)) { db.officers = inc.officers || {}; db.officersTs = inc.officersTs; }
   db.families = db.families.filter(f => !(db.tomb[f.id] && db.tomb[f.id] >= (f.ts || 0)));
   (inc.years || []).forEach(y => { if (!isYearGone(y) && db.years.indexOf(y) < 0) db.years.push(y); });
   db.years = db.years.filter(y => !isYearGone(y)).sort((a,b) => Number(a) - Number(b));
