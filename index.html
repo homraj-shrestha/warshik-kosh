@@ -217,6 +217,13 @@ nav.bottom button.on{color:#e67e22;font-weight:700;background:#fff3d6}
       <div id="decList"></div>
     </div>
     <div class="card">
+      <h2>🎯 संस्थाको उद्देश्य</h2>
+      <label>उद्देश्य (प्रत्येक बुँदा नयाँ लाइनमा)</label>
+      <textarea id="objText" rows="5" placeholder="जस्तै: परिवारका सदस्यबीच आर्थिक सहयोग र एकता कायम राख्ने..."></textarea>
+      <button class="btn light" onclick="saveObjectives()">💾 उद्देश्य सेभ गर्नुहोस्</button>
+      <div class="note" id="objSaved"></div>
+    </div>
+    <div class="card">
       <h2>📚 वंशावली र इतिहास</h2>
       <label>इतिहास / वंशावली विवरण</label>
       <textarea id="histText" rows="8" placeholder="परिवारको इतिहास, वंशावली, पुस्तक सम्बन्धी विवरण यहाँ लेख्नुहोस्..." onblur="saveHistory()"></textarea>
@@ -350,7 +357,8 @@ function load(){
   db.families = Array.isArray(db.families) ? db.families : [];
   db.years = Array.isArray(db.years) ? db.years : [];
   db.rates = db.rates || {}; db.tomb = db.tomb || {}; db.yearTomb = db.yearTomb || {}; db.expenses = Array.isArray(db.expenses) ? db.expenses : [];
-  db.history = db.history || ""; db.historyTs = db.historyTs || 0; db.officers = db.officers || {}; db.officersTs = db.officersTs || 0; db.decisions = Array.isArray(db.decisions) ? db.decisions : []; db.yearAdded = db.yearAdded || {};
+  db.history = db.history || ""; db.historyTs = db.historyTs || 0; db.officers = db.officers || {}; db.officersTs = db.officersTs || 0; db.decisions = Array.isArray(db.decisions) ? db.decisions : [];
+  db.objectives = db.objectives || ""; db.objectivesTs = db.objectivesTs || 0; db.yearAdded = db.yearAdded || {};
   db.donors = Array.isArray(db.donors) ? db.donors : [];
   db.families.forEach(f => { f.pay = f.pay || {}; if (f.ts === undefined) f.ts = 0;
     Object.keys(f.pay).forEach(y => { if (f.pay[y].ts === undefined) f.pay[y].ts = 0; }); });
@@ -535,6 +543,8 @@ function renderDue(){
 
 /* ================= सेटिङ ================= */
 function renderSet(){
+  if ($("objText") && !$("objText").value && db.objectives) $("objText").value = db.objectives;
+  if ($("objSaved")) setObjStatus();
   if ($("histSaved")) setHistStatus();
   if ($("decList")) renderDecisions();
   const off = db.officers || {};
@@ -565,7 +575,7 @@ function buildPrint(){
   let tot = 0, due = 0;
   db.years.forEach(y => { tot += sumYear(y); });
   db.families.forEach(f => { due += dueOf(f); });
-  let h = `<h1>${esc(getOrg())} — पूर्ण विवरण</h1>
+  let h = `<h1>${esc(getOrg())} — पूर्ण विवरण</h1>${objectivesHTML()}
   <div>छपाइ मिति: ${esc(today)} · जम्मा घरधुरी: ${n} · कुल संकलन: ${fmt(tot)} · कुल बाँकी: ${fmt(due)}</div>`;
   h += `<h2>वर्षगत सारांश</h2><table><tr><th>वर्ष</th><th>दर</th><th>अपेक्षित</th><th>संकलन</th><th>तिरेका</th><th>नतिरेका</th></tr>`;
   db.years.forEach(y => {
@@ -609,7 +619,7 @@ function buildYearPrint(y){
   const dueRows = db.families.map((f, i) => ({ f, i })).filter(x => amtOf(x.f, y) <= 0);
   const expRows = (db.expenses || []).filter(e => e.year === y);
   let h = `<h1>${esc(getOrg())} — ${esc(y)} साल</h1>
-  <div>दर: ${fmt(rate)} · छपाइ मिति: ${esc(today)}</div>`;
+  <div>दर: ${fmt(rate)} · छपाइ मिति: ${esc(today)}</div>${objectivesHTML()}`;
   h += `<h2>१. सारांश</h2><table><tr><th>कुल घरधुरी</th><th>तिरेका</th><th>नतिरेका</th><th>कुल संकलन</th><th>कुल खर्च</th><th>मौज्दात</th><th>बाँकी रकम</th></tr>
   <tr><td>${n}</td><td>${paid}</td><td>${unpaid}</td><td>${fmt(got)}</td><td>${fmt(exp)}</td><td>${fmt(got - exp)}</td><td>${fmt(Math.max(0, rate * unpaid))}</td></tr></table>`;
   h += `<h2>२. घरधुरी विवरण</h2><table><tr><th>सि.नं.</th><th>कोड</th><th>नाम</th><th>मोबाइल</th><th>ठेगाना</th><th>स्थिति</th></tr>`;
@@ -733,6 +743,7 @@ function setHistStatus(){
 }
 function saveHistory(){
   const v = $("histText").value;
+  if (!v.trim() && (db.history || "").trim() && !confirm("इतिहास खाली छ। साँच्चै मेटाउने हो? (रद्द गर्न Cancel थिच्नुहोस्)")) { $("histText").value = db.history; setHistStatus(); return; }
   if (v !== (db.history || "")) { db.history = v; db.historyTs = nowTs(); save(); }
   setHistStatus();
 }
@@ -864,6 +875,23 @@ function sigHTML(){
   const o = db.officers || {};
   const col = (title, name) => `<td><b style="font-size:13px;text-decoration:underline">${title}</b><br><b>${esc(name || "")}</b><br><br><br>हस्ताक्षर: ______________<br><br>मिति: __________<div class="stamp">छाप</div></td>`;
   return `<table class="sigt"><tr>${col("अध्यक्ष", o.chair)}${col("सचिव", o.sec)}${col("कोषाध्यक्ष", o.treas)}</tr></table>`;
+}
+
+/* ================= संस्थाको उद्देश्य ================= */
+function setObjStatus(){
+  const el = $("objSaved");
+  if (el) el.textContent = db.objectivesTs ? "✅ अन्तिम सेभ: " + new Date(db.objectivesTs).toLocaleString("ne-NP") : "अहिलेसम्म सेभ भएको छैन";
+}
+function saveObjectives(){
+  const v = $("objText").value;
+  if (!v.trim() && (db.objectives || "").trim() && !confirm("उद्देश्य खाली छ। साँच्चै मेटाउने हो? (रद्द गर्न Cancel थिच्नुहोस्)")) { $("objText").value = db.objectives; setObjStatus(); return; }
+  if (v !== (db.objectives || "")) { db.objectives = v; db.objectivesTs = nowTs(); save(); }
+  setObjStatus();
+}
+function objectivesHTML(){
+  const t = (db.objectives || "").trim();
+  if (!t) return "";
+  return `<div style="margin:4px 0 8px"><b>उद्देश्य:</b><div style="white-space:pre-wrap">${esc(t)}</div></div>`;
 }
 
 /* ================= बैठकका निर्णय ================= */
@@ -1084,6 +1112,7 @@ function mergeCloud(inc){
   db.donors = db.donors.filter(d => !db.tomb["d:" + d.id]);
   if ((inc.historyTs || 0) > (db.historyTs || 0)) { db.history = inc.history || ""; db.historyTs = inc.historyTs; }
   if ((inc.officersTs || 0) > (db.officersTs || 0)) { db.officers = inc.officers || {}; db.officersTs = inc.officersTs; }
+  if ((inc.objectivesTs || 0) > (db.objectivesTs || 0)) { db.objectives = inc.objectives || ""; db.objectivesTs = inc.objectivesTs; }
   (inc.decisions || []).forEach(d => { if (db.tomb["n:" + d.id]) return; const old = db.decisions.find(x => x.id === d.id); if (!old) db.decisions.push(JSON.parse(JSON.stringify(d))); else if ((d.ts || 0) > (old.ts || 0)) Object.assign(old, JSON.parse(JSON.stringify(d))); });
   db.decisions = db.decisions.filter(d => !db.tomb["n:" + d.id]);
   db.families = db.families.filter(f => !(db.tomb[f.id] && db.tomb[f.id] >= (f.ts || 0)));
