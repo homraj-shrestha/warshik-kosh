@@ -48,7 +48,7 @@ label{font-weight:700;color:#7a4a00;font-size:14px}
 #sigFoot{display:none}
 .sigt{width:100%;border-collapse:collapse}
 .sigt td{width:33%;vertical-align:top;padding:2px 6px;font-size:11px}
-.stamp{display:block;height:50px;margin-top:4px;color:#777;font-size:10px}
+.stamp{display:block;height:60px;margin-top:14px;color:#777;font-size:10px}
 
 @media print{
   body > *:not(#printArea):not(#sigFoot){display:none!important}
@@ -647,7 +647,7 @@ function openPrintWindow(body, orient){
     'th,td{border:1px solid #777;padding:3px;text-align:left;vertical-align:top;overflow-wrap:anywhere}' +
     'th{background:#eee}h1{font-size:15px;margin:0 0 4px}h2{font-size:12px;margin:8px 0 4px}' +
     '.pw,.pw>tbody>tr>td,.pw>tfoot>tr>td{border:0;padding:0;margin:0}.sigt td{border:0;padding:2px 6px;font-size:10px}' +
-    '.stamp{display:block;height:50px;margin-top:4px;color:#777;font-size:10px}' +
+    '.stamp{display:block;height:60px;margin-top:14px;color:#777;font-size:10px}' +
     '</style></head><body>' + body + '</body></html>');
   w.document.close();
   setTimeout(function(){ w.focus(); w.print(); }, 300);
@@ -862,7 +862,7 @@ function saveOfficers(){
 }
 function sigHTML(){
   const o = db.officers || {};
-  const col = (title, name) => `<td><b style="font-size:13px;text-decoration:underline">${title}</b><br><b>${esc(name || "")}</b><br><br>हस्ताक्षर: ______________<br>मिति: __________<div class="stamp">छाप</div></td>`;
+  const col = (title, name) => `<td><b style="font-size:13px;text-decoration:underline">${title}</b><br><b>${esc(name || "")}</b><br><br><br>हस्ताक्षर: ______________<br><br>मिति: __________<div class="stamp">छाप</div></td>`;
   return `<table class="sigt"><tr>${col("अध्यक्ष", o.chair)}${col("सचिव", o.sec)}${col("कोषाध्यक्ष", o.treas)}</tr></table>`;
 }
 
