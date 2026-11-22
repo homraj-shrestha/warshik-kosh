@@ -207,10 +207,21 @@ nav.bottom button.on{color:#e67e22;font-weight:700;background:#fff3d6}
       <div id="rateList"></div>
     </div>
     <div class="card">
+      <h2>📝 बैठकका निर्णय</h2>
+      <label>बैठकको मिति (नेपाली)</label><input id="nDate" placeholder="२०८३-०८-१०">
+      <label>निर्णयको शीर्षक</label><input id="nTitle" placeholder="जस्तै: भवन मर्मतको निर्णय">
+      <label>निर्णयको विवरण</label><textarea id="nText" rows="4" placeholder="निर्णय यहाँ लेख्नुहोस्..."></textarea>
+      <label class="btn light" style="text-align:center;cursor:pointer">📎 फाइल संलग्न (वैकल्पिक)<input type="file" id="nFile" accept=".pdf,.doc,.docx,.txt,image/*" style="display:none"></label>
+      <button class="btn" id="decBtn" onclick="addDecision()">💾 निर्णय सेभ गर्नुहोस्</button>
+      <button class="btn light" id="decCancel" style="display:none" onclick="cancelDecEdit()">रद्द गर्नुहोस्</button>
+      <div id="decList"></div>
+    </div>
+    <div class="card">
       <h2>📚 वंशावली र इतिहास</h2>
       <label>इतिहास / वंशावली विवरण</label>
       <textarea id="histText" rows="8" placeholder="परिवारको इतिहास, वंशावली, पुस्तक सम्बन्धी विवरण यहाँ लेख्नुहोस्..." onblur="saveHistory()"></textarea>
       <button class="btn light" onclick="saveHistory()">💾 इतिहास सेभ गर्नुहोस्</button>
+      <div class="note" id="histSaved"></div>
       <label class="btn light" style="text-align:center;cursor:pointer">📎 किताब / फाइल अपलोड (PDF, फोटो, Word)<input type="file" multiple accept=".pdf,.doc,.docx,.txt,image/*" onchange="addFiles(this)" style="display:none"></label>
       <div class="note">फाइलहरू यही उपकरणमा सुरक्षित हुन्छन् (Cloud Sync मा जाँदैनन्)। इतिहासको लेख भने Sync मा जान्छ।</div>
       <div id="fileList"></div>
@@ -339,7 +350,7 @@ function load(){
   db.families = Array.isArray(db.families) ? db.families : [];
   db.years = Array.isArray(db.years) ? db.years : [];
   db.rates = db.rates || {}; db.tomb = db.tomb || {}; db.yearTomb = db.yearTomb || {}; db.expenses = Array.isArray(db.expenses) ? db.expenses : [];
-  db.history = db.history || ""; db.historyTs = db.historyTs || 0; db.officers = db.officers || {}; db.officersTs = db.officersTs || 0; db.yearAdded = db.yearAdded || {};
+  db.history = db.history || ""; db.historyTs = db.historyTs || 0; db.officers = db.officers || {}; db.officersTs = db.officersTs || 0; db.decisions = Array.isArray(db.decisions) ? db.decisions : []; db.yearAdded = db.yearAdded || {};
   db.donors = Array.isArray(db.donors) ? db.donors : [];
   db.families.forEach(f => { f.pay = f.pay || {}; if (f.ts === undefined) f.ts = 0;
     Object.keys(f.pay).forEach(y => { if (f.pay[y].ts === undefined) f.pay[y].ts = 0; }); });
@@ -524,6 +535,8 @@ function renderDue(){
 
 /* ================= सेटिङ ================= */
 function renderSet(){
+  if ($("histSaved")) setHistStatus();
+  if ($("decList")) renderDecisions();
   const off = db.officers || {};
   if ($("offChair") && document.activeElement !== $("offChair")) $("offChair").value = off.chair || "";
   if ($("offSec") && document.activeElement !== $("offSec")) $("offSec").value = off.sec || "";
@@ -576,6 +589,11 @@ function buildPrint(){
   h += `<h2>बाँकी विवरण (${rows.length} घरधुरी)</h2><table><tr><th>नाम</th><th>कोड</th><th>मोबाइल</th><th>बाँकी वर्ष</th><th>बाँकी रकम</th></tr>`;
   rows.forEach(x => { h += `<tr><td>${esc(x.f.name)}</td><td>${esc(x.f.code)}</td><td>${esc(x.f.phone || "")}</td><td>${esc(x.ys.join(", "))}</td><td>${fmt(x.d)}</td></tr>`; });
   h += `</table>`;
+  if ((db.decisions || []).length) {
+    h += `<h2>बैठकका निर्णय (${db.decisions.length} वटा)</h2><table><tr><th>सि.नं.</th><th>मिति</th><th>शीर्षक</th><th>विवरण</th></tr>`;
+    db.decisions.forEach((d, i) => { h += `<tr><td>${i + 1}</td><td>${esc(d.date || "")}</td><td>${esc(d.title)}</td><td>${esc(d.text || "")}</td></tr>`; });
+    h += `</table>`;
+  }
   if ((db.donors || []).length) {
     h += `<h2>सहयोगकर्ता सूची (${db.donors.length} जना)</h2><table><tr><th>सि.नं.</th><th>मिति</th><th>कोड</th><th>नाम</th><th>ठेगाना</th><th>कन्ट्याक्ट</th><th>रकम</th><th>रसिद नं.</th></tr>`;
     db.donors.forEach((d, i) => { h += `<tr><td>${i + 1}</td><td>${esc(d.date || "")}</td><td>${esc(d.code || "")}</td><td>${esc(d.name)}</td><td>${esc(d.address || "")}</td><td>${esc(d.phone || "")}</td><td>${fmt(d.amount)}</td><td>${esc(d.rcpt || "")}</td></tr>`; });
@@ -709,10 +727,14 @@ function wrapPrint(h){
 }
 /* ================= वंशावली र फाइल ================= */
 function asciiDigits(s){ return String(s).replace(/[०-९]/g, d => "०१२३४५६७८९".indexOf(d)); }
+function setHistStatus(){
+  const el = $("histSaved");
+  if (el) el.textContent = db.historyTs ? "✅ अन्तिम सेभ: " + new Date(db.historyTs).toLocaleString("ne-NP") : "अहिलेसम्म सेभ भएको छैन";
+}
 function saveHistory(){
   const v = $("histText").value;
-  if (v === (db.history || "")) return;
-  db.history = v; db.historyTs = nowTs(); save();
+  if (v !== (db.history || "")) { db.history = v; db.historyTs = nowTs(); save(); }
+  setHistStatus();
 }
 function openFileDB(){
   return new Promise((res, rej) => {
@@ -842,6 +864,82 @@ function sigHTML(){
   const o = db.officers || {};
   const col = (title, name) => `<td><b style="font-size:13px;text-decoration:underline">${title}</b><br><b>${esc(name || "")}</b><br><br>हस्ताक्षर: ______________<br>मिति: __________<div class="stamp">छाप</div></td>`;
   return `<table class="sigt"><tr>${col("अध्यक्ष", o.chair)}${col("सचिव", o.sec)}${col("कोषाध्यक्ष", o.treas)}</tr></table>`;
+}
+
+/* ================= बैठकका निर्णय ================= */
+function saveFileRec(f){
+  return openFileDB().then(dbx => new Promise((res, rej) => {
+    const id = "x" + Date.now() + Math.random().toString(36).slice(2, 7);
+    const tx = dbx.transaction("files", "readwrite");
+    tx.objectStore("files").put({ id, name: f.name, type: f.type, size: f.size, date: nowTs(), blob: f });
+    tx.oncomplete = () => res(id); tx.onerror = () => rej(tx.error);
+  }));
+}
+let editDecId = null;
+async function delFileRec(id){
+  try {
+    const dbx = await openFileDB();
+    await new Promise((res, rej) => { const tx = dbx.transaction("files", "readwrite"); tx.objectStore("files").delete(id); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+  } catch(e) {}
+}
+async function addDecision(){
+  const title = $("nTitle").value.trim(), text = $("nText").value.trim(), date = $("nDate").value.trim();
+  if (!title) return alert("शीर्षक लेख्नुहोस्।");
+  const f = $("nFile").files[0];
+  if (f && f.size > 15 * 1024 * 1024) return alert("फाइल १५ MB भन्दा सानो हुनुपर्छ।");
+  const fileId = f ? await saveFileRec(f) : "";
+  if (editDecId) {
+    const d = db.decisions.find(x => x.id === editDecId);
+    if (d) {
+      if (fileId && d.fileId) await delFileRec(d.fileId);
+      d.date = date; d.title = title; d.text = text;
+      if (fileId) { d.fileId = fileId; d.fileName = f.name; }
+      d.ts = nowTs();
+    }
+    cancelDecEdit(); save(); renderDecisions();
+    return;
+  }
+  db.decisions.push({ id: "n" + Date.now(), date, title, text, fileId, fileName: f ? f.name : "", ts: nowTs() });
+  ["nDate","nTitle","nText"].forEach(i => $(i).value = ""); $("nFile").value = "";
+  save(); renderDecisions();
+}
+function editDecision(id){
+  const d = (db.decisions || []).find(x => x.id === id); if (!d) return;
+  editDecId = id;
+  $("nDate").value = d.date || ""; $("nTitle").value = d.title || ""; $("nText").value = d.text || ""; $("nFile").value = "";
+  $("decBtn").textContent = "💾 निर्णय अपडेट गर्नुहोस्";
+  $("decCancel").style.display = "block";
+  $("nTitle").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+function cancelDecEdit(){
+  editDecId = null;
+  ["nDate","nTitle","nText"].forEach(i => $(i).value = ""); $("nFile").value = "";
+  $("decBtn").textContent = "💾 निर्णय सेभ गर्नुहोस्";
+  $("decCancel").style.display = "none";
+}
+function renderDecisions(){
+  if (!$("decList")) return;
+  const list = (db.decisions || []).slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  $("decList").innerHTML = list.map(d => `<div class="fam"><div class="top"><div>
+      <div class="name">${esc(d.title)}</div>
+      <div class="muted">📅 ${esc(d.date || "—")}</div>
+      ${d.text ? `<div class="muted" style="white-space:pre-wrap">${esc(d.text)}</div>` : ""}
+      ${d.fileId ? `<div class="muted">📎 <a href="#" onclick="openFile('${d.fileId}');return false;">${esc(d.fileName || "फाइल")}</a></div>` : ""}
+    </div><div><button class="btn small light" onclick="editDecision('${d.id}')">✏️</button><button class="btn small red" onclick="delDecision('${d.id}')">🗑</button></div></div></div>`).join("")
+    || '<div class="note">कुनै निर्णय छैन</div>';
+}
+async function delDecision(id){
+  const d = (db.decisions || []).find(x => x.id === id); if (!d) return;
+  if (!confirm("यो निर्णय मेटाउने हो?")) return;
+  db.tomb = db.tomb || {}; db.tomb["n:" + id] = nowTs();
+  db.decisions = db.decisions.filter(x => x.id !== id);
+  if (d.fileId) {
+    try {
+      const dbx = await openFileDB();
+      await new Promise((res, rej) => { const tx = dbx.transaction("files", "readwrite"); tx.objectStore("files").delete(d.fileId); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+    } catch(e) {}
+  }
+  save(); renderDecisions();
 }
 
 /* ================= मुखियाको फोटो ================= */
@@ -986,6 +1084,8 @@ function mergeCloud(inc){
   db.donors = db.donors.filter(d => !db.tomb["d:" + d.id]);
   if ((inc.historyTs || 0) > (db.historyTs || 0)) { db.history = inc.history || ""; db.historyTs = inc.historyTs; }
   if ((inc.officersTs || 0) > (db.officersTs || 0)) { db.officers = inc.officers || {}; db.officersTs = inc.officersTs; }
+  (inc.decisions || []).forEach(d => { if (db.tomb["n:" + d.id]) return; const old = db.decisions.find(x => x.id === d.id); if (!old) db.decisions.push(JSON.parse(JSON.stringify(d))); else if ((d.ts || 0) > (old.ts || 0)) Object.assign(old, JSON.parse(JSON.stringify(d))); });
+  db.decisions = db.decisions.filter(d => !db.tomb["n:" + d.id]);
   db.families = db.families.filter(f => !(db.tomb[f.id] && db.tomb[f.id] >= (f.ts || 0)));
   (inc.years || []).forEach(y => { if (!isYearGone(y) && db.years.indexOf(y) < 0) db.years.push(y); });
   db.years = db.years.filter(y => !isYearGone(y)).sort((a,b) => Number(a) - Number(b));
